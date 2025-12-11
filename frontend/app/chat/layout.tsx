@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import api from '../lib/api';
-import { Loader2, Menu } from 'lucide-react';
+import { Loader2, Menu, ChevronDown } from 'lucide-react';
 import Sidebar from '../components/Chat/SideBar';
 
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
@@ -14,6 +14,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const [sessions, setSessions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // 1. Auth Check & Session Fetch
   useEffect(() => {
@@ -81,18 +82,34 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               currentSessionId={params.chatId as string} 
               onSelectSession={(id) => { setMobileOpen(false); handleSelectSession(id); }}
               onNewChat={() => { setMobileOpen(false); handleNewChat(); }}
+              onClose={() => setMobileOpen(false)}
             />
           </div>
         </div>
       )}
 
       <main className="flex-1 flex flex-col relative h-full">
-        <header className="md:hidden flex items-center justify-between p-4 border-b border-gray-800/60 bg-[#0f1117]/80 backdrop-blur">
-          <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg bg-gray-800 text-white">
-            <Menu size={20} />
-          </button>
-          <span className="text-sm text-gray-400">RAG Bot</span>
-          <div className="w-8" />
+        <header className="flex items-center justify-between p-4 md:p-5 border-b border-gray-800/60 bg-[#0f1117]/80 backdrop-blur">
+          <div className="flex items-center gap-2 md:hidden">
+            <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg bg-gray-800 text-white">
+              <Menu size={20} />
+            </button>
+            <span className="text-sm text-gray-400">RAG Bot</span>
+          </div>
+          <div className="hidden md:block text-sm text-gray-400">RAG Bot</div>
+          <div className="relative">
+            <button onClick={() => setProfileOpen((v) => !v)} className="flex items-center gap-2 px-3 py-2 bg-gray-800 text-white rounded-xl">
+              <div className="w-6 h-6 rounded-full bg-blue-600" />
+              <ChevronDown size={16} />
+            </button>
+            {profileOpen && (
+              <div className="absolute right-0 mt-2 w-40 bg-[#12161d] border border-gray-800 rounded-xl shadow-xl p-2 z-10">
+                <button className="w-full text-left px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-lg" onClick={() => setProfileOpen(false)}>Profile</button>
+                <button className="w-full text-left px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-lg" onClick={() => setProfileOpen(false)}>Settings</button>
+                <button className="w-full text-left px-3 py-2 text-red-400 hover:bg-gray-800 rounded-lg" onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); setProfileOpen(false); router.replace('/login'); }}>Sign Out</button>
+              </div>
+            )}
+          </div>
         </header>
         <div className="flex-1 px-4 md:px-8 py-6">
           {children}

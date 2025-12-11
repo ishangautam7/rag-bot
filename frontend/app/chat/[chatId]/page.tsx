@@ -34,14 +34,11 @@ export default function ChatSessionPage() {
     if (chatId) fetchMessages();
   }, [chatId]);
 
-  // 2. Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, sending]);
 
-  // 3. Handle Send
   const handleSendMessage = async (content: string) => {
-    // Optimistic Update (Show user message immediately)
     const tempUserMsg = { role: 'USER' as const, content };
     setMessages(prev => [...prev, tempUserMsg]);
     setSending(true);
@@ -57,7 +54,6 @@ export default function ChatSessionPage() {
       setMessages(prev => [...prev, res.data.botMessage]);
     } catch (error) {
       console.error("Failed to send", error);
-      // Optional: Add error toast here
     } finally {
       setSending(false);
     }

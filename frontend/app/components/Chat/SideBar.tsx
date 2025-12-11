@@ -1,5 +1,5 @@
 "use client";
-import { MessageSquare, Plus, LogOut } from 'lucide-react';
+import { MessageSquare, Plus, LogOut, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface SidebarProps {
@@ -7,16 +7,18 @@ interface SidebarProps {
   currentSessionId: string | null;
   onSelectSession: (id: string) => void;
   onNewChat: () => void;
+  onClose?: () => void;
 }
 
-export default function Sidebar({ sessions, currentSessionId, onSelectSession, onNewChat }: SidebarProps) {
+export default function Sidebar({ sessions, currentSessionId, onSelectSession, onNewChat, onClose }: SidebarProps) {
   const router = useRouter();
+
 
   const handleSignOut = () => {
     try {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-    } catch {}
+    } catch { }
     router.replace('/login');
   };
 
@@ -28,8 +30,13 @@ export default function Sidebar({ sessions, currentSessionId, onSelectSession, o
             <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-900/30" />
             <span className="text-white font-bold tracking-wide">RAG Bot</span>
           </div>
+          {onClose && (
+            <button onClick={onClose} className="md:hidden p-2 rounded-lg text-gray-400 hover:text-white">
+              <X size={18} />
+            </button>
+          )}
         </div>
-        <button 
+        <button
           onClick={onNewChat}
           className="mt-4 w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl transition-all font-medium shadow-lg shadow-blue-900/20"
         >
@@ -44,11 +51,10 @@ export default function Sidebar({ sessions, currentSessionId, onSelectSession, o
           <button
             key={session.id}
             onClick={() => onSelectSession(session.id)}
-            className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 text-sm transition-all ${
-              currentSessionId === session.id 
-                ? 'bg-gray-800 text-white shadow-md' 
+            className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 text-sm transition-all ${currentSessionId === session.id
+                ? 'bg-gray-800 text-white shadow-md'
                 : 'text-gray-300 hover:bg-gray-800/50 hover:text-white'
-            }`}
+              }`}
           >
             <MessageSquare size={16} />
             <span className="truncate">{session.title || "Untitled Chat"}</span>

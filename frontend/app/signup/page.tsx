@@ -1,9 +1,10 @@
+// app/signup/page.tsx
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { UserPlus, ArrowRight } from 'lucide-react';
+import { Sparkles, ArrowRight } from 'lucide-react'; // Changed icon to Sparkles for "New" feel
 import api from '../lib/api';
 import AuthInput from '../components/UI/AuthInput';
 import type { AxiosError } from 'axios';
@@ -38,7 +39,8 @@ export default function SignupPage() {
         } catch {}
       },
     });
-    g.accounts.id.renderButton(googleBtnRef.current, { theme: 'filled_blue', size: 'large', shape: 'pill' });
+    // Changed theme to 'filled_black' to match dark mode better, or keep filled_blue if preferred
+    g.accounts.id.renderButton(googleBtnRef.current, { theme: 'filled_black', size: 'large', shape: 'pill' });
   }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,77 +66,83 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0c0f14] via-[#0f1117] to-[#0c0f14] flex items-center justify-center p-4">
-      {/* Background Decor */}
-      <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-[128px] pointer-events-none" />
+    <div className="min-h-screen bg-[#0B1121] flex flex-col items-center justify-center p-4 relative overflow-hidden text-slate-200 font-sans">
       
-      <div className="w-full max-w-md bg-[#12161d]/80 backdrop-blur-xl border border-gray-800 rounded-2xl p-10 shadow-2xl relative z-10">
+      {/* Minimalist Background Pattern */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+
+      {/* Main Container */}
+      <div className="w-full max-w-[400px] relative z-10">
         
-        <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-900/20">
-            <UserPlus className="text-white" size={24} />
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 mb-6 shadow-sm">
+            <Sparkles className="text-indigo-500" size={20} />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Create Account</h1>
-          <p className="text-gray-400 text-sm">Get started with your AI companion today</p>
+          <h1 className="text-2xl font-semibold text-white tracking-tight mb-2">Create account</h1>
+          <p className="text-slate-500 text-sm">Start building with your AI companion</p>
         </div>
 
-        {error && (
-          <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm text-center">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <AuthInput 
-            label="Full Name" 
-            type="text" 
-            placeholder="John Doe"
-            value={formData.username}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, username: e.target.value})}
-            required
-          />
-
-          <AuthInput 
-            label="Email Address" 
-            type="email" 
-            placeholder="you@example.com"
-            value={formData.email}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, email: e.target.value})}
-            required
-          />
+        <div className="bg-[#151B2B] border border-slate-800/60 rounded-xl p-8 shadow-2xl shadow-black/40">
           
-          <AuthInput 
-            label="Password" 
-            type="password" 
-            placeholder="••••••••"
-            value={formData.password}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, password: e.target.value})}
-            required
-          />
+          {error && (
+             <div className="mb-6 p-3 bg-red-950/20 border border-red-900/50 rounded-lg flex items-center gap-3">
+             <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+             <span className="text-red-400 text-sm">{error}</span>
+           </div>
+          )}
 
-          <button 
-            type="submit" 
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-blue-900/20"
-          >
-            {loading ? 'Creating Account...' : 'Sign Up Free'}
-            {!loading && <ArrowRight size={18} />}
-          </button>
-        </form>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <AuthInput 
+              label="Full Name" 
+              type="text" 
+              placeholder="John Doe"
+              value={formData.username}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, username: e.target.value})}
+              required
+            />
 
-        <div className="my-6 flex items-center gap-4">
-          <div className="h-px bg-gray-800 flex-1" />
-          <span className="text-gray-500 text-xs uppercase">Or continue with</span>
-          <div className="h-px bg-gray-800 flex-1" />
+            <AuthInput 
+              label="Email" 
+              type="email" 
+              placeholder="name@company.com"
+              value={formData.email}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, email: e.target.value})}
+              required
+            />
+            
+            <AuthInput 
+              label="Password" 
+              type="password" 
+              placeholder="••••••••"
+              value={formData.password}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, password: e.target.value})}
+              required
+            />
+
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-indigo-900/20 mt-2"
+            >
+              {loading ? 'Creating...' : 'Get Started'}
+              {!loading && <ArrowRight size={16} />}
+            </button>
+          </form>
+
+          <div className="my-6 flex items-center gap-4">
+            <div className="h-px bg-slate-800 flex-1" />
+            <span className="text-slate-600 text-[10px] uppercase font-bold tracking-wider">Or</span>
+            <div className="h-px bg-slate-800 flex-1" />
+          </div>
+
+          <div className="w-full flex items-center justify-center grayscale hover:grayscale-0 transition-all duration-300">
+            <div ref={googleBtnRef} />
+          </div>
         </div>
 
-        <div className="w-full flex items-center justify-center">
-          <div ref={googleBtnRef} />
-        </div>
-
-        <p className="text-center mt-8 text-gray-400 text-sm">
-          Already have an account?{' '}
-          <Link href="/login" className="text-blue-500 hover:text-blue-400 font-medium transition-colors">
+        <p className="text-center mt-8 text-slate-500 text-sm">
+          Already a member?{' '}
+          <Link href="/login" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
             Sign in
           </Link>
         </p>
