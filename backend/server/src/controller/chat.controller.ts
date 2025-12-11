@@ -60,3 +60,28 @@ export const getMessages = async (req: AuthRequest, res: Response): Promise<any>
     return res.status(500).json({ error: 'Failed to fetch messages' });
   }
 };
+
+// POST /api/chat/upload
+export const uploadFile = async (req: AuthRequest, res: Response): Promise<any> => {
+  try {
+    const userId = req.user!;
+    const file = (req as any).file;
+    const { sessionId } = (req as any).body || {};
+
+    if (!file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const fileInfo = {
+      filename: file.filename,
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      path: file.path,
+    };
+
+    return res.status(201).json({ userId, sessionId: sessionId || null, file: fileInfo });
+  } catch (error) {
+    return res.status(500).json({ error: 'File upload failed' });
+  }
+};

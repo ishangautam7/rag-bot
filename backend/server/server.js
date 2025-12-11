@@ -1,9 +1,16 @@
+import 'dotenv/config';
 import express from "express";
-import authRoutes from "./src/routes/auth.routes";
-import chatRoutes from "./src/routes/chat.routes";
+import cors from "cors";
+import authRoutes from "./src/routes/auth.routes.ts";
+import chatRoutes from "./src/routes/chat.routes.ts";
 
 const app = express();
 app.use(express.json());
+
+app.use(cors({
+  origin: "http://localhost:3000",
+  credentials: true,
+}));
 
 app.get("/health", (req, res) => {
     res.json({
@@ -16,6 +23,6 @@ app.get("/health", (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 
-app.listen(5000, () => {
-    console.log("Server is running on port 3000");
+app.listen(4000, () => {
+    console.log("Server is running on port 4000");
 });
