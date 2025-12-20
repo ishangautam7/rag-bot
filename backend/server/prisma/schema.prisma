@@ -8,6 +8,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model ApplicationLog {
+  id          Int      @id @default(autoincrement())
+  session_id  String
+  user_query  String
+  ai_response String
+  model       String
+  created_at  DateTime @default(now())
+
+  @@map("application_logs")
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -16,6 +27,11 @@ model User {
   password  String?  
   googleId  String?  @unique 
   avatar    String?  
+  isAdmin   Boolean  @default(false)
+  
+  // Password reset
+  resetToken        String?
+  resetTokenExpires DateTime?
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

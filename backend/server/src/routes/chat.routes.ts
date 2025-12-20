@@ -1,21 +1,22 @@
 import { Router } from 'express';
 import * as chatController from '../controller/chat.controller';
-import { protect } from '../middlewares/auth'; 
+import { protect } from '../middlewares/auth';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
 const router = Router();
 
-// File upload (for RAG)
+// Directory for uploading file...
 const uploadDir = path.resolve(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
+//to store the incomming files
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
-  filename: (_req, file, cb) => {
+  destination: (_req: any, _file: any, cb: any) => cb(null, uploadDir),
+  filename: (_req: any, file: any, cb: any) => {
     const ext = path.extname(file.originalname);
     const base = path.basename(file.originalname, ext);
     const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
@@ -23,9 +24,12 @@ const storage = multer.diskStorage({
   }
 });
 
+//to use RAM for accessing files
+// const storage = multer.memoryStorage();
+
 const upload = multer({ storage });
 
-// Public upload endpoint (attach auth later if needed)
+// Public upload endpoint
 router.post('/upload', upload.single('file'), chatController.uploadFile);
 
 // Protected chat endpoints

@@ -1,133 +1,148 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import api from '../../lib/api';
-import ChatInput from '../../components/Chat/ChatInput';
-import MessageBubble from '../../components/Chat/MessageBubble';
-import { Loader2 } from 'lucide-react';
-import { Upload } from 'lucide-react';
+import ChatInput from '@/app/components/Chat/ChatInput';
+import MessageBubble from '@/app/components/Chat/MessageBubble';
+import { Message } from '@/app/types';
+import { getMessages, sendMessage } from '@/app/lib/api';
+import type { Message as BackendMessage, SendMessageResponse } from '@/app/lib/types';
+import { RobotIcon } from '@/app/components/Icons';
 
-type ChatMessage = { role: 'USER' | 'ASSISTANT' | 'SYSTEM'; content: string };
-
-export default function ChatSessionPage() {
-  const { chatId } = useParams();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
+export default function ChatPage() {
+  const { chatId } = useParams() as { chatId: string };
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // 1. Fetch Messages when URL changes
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   useEffect(() => {
-    const fetchMessages = async () => {
-      setLoading(true);
-      try {
-        const res = await api.get(`/chat/sessions/${chatId}`);
-        setMessages(res.data);
-      } catch (error) {
-        console.error("Failed to load chat", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    scrollToBottom();
+  }, [messages]);
 
-    if (chatId) fetchMessages();
+  useEffect(() => {
+    if (!chatId) return;
+    const load = async () => {
+      try {
+        const res = await getMessages(chatId);
+        const data: BackendMessage[] = res.data as unknown as BackendMessage[];
+        const mapped: Message[] = data.map((m) => ({
+          id: m.id!,
+          content: m.content,
+          timestamp: m.createdAt!,
+          role: m.role.toLowerCase() as Message['role'],
+        }));
+        setMessages(mapped);
+      } catch { }
+    };
+    load();
   }, [chatId]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, sending]);
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const element = e.currentTarget;
+    setIsScrolled(element.scrollTop > 100);
+  };
 
-  const handleSendMessage = async (content: string) => {
-    const tempUserMsg = { role: 'USER' as const, content };
-    setMessages(prev => [...prev, tempUserMsg]);
-    setSending(true);
+  const handleSendMessage = async (content: string, _files?: File[], model?: string, apiKey?: string) => {
+    if (!chatId) return;
 
+    // Don't send if no content (files are uploaded separately)
+    if (!content.trim()) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content,
+      timestamp: new Date().toISOString(),
+      role: 'user',
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setLoading(true);
     try {
-      const res = await api.post('/chat/message', {
-        sessionId: chatId,
-        content
-      });
-
-      // Update with real response (User + Bot)
-      // Since our backend returns both, we append the Bot one
-      setMessages(prev => [...prev, res.data.botMessage]);
-    } catch (error) {
-      console.error("Failed to send", error);
+      const res = await sendMessage(chatId, content, model, apiKey);
+      const { userMessage: u, botMessage: b } = res.data as SendMessageResponse;
+      const mappedU: Message = { id: u.id!, content: u.content, timestamp: u.createdAt!, role: u.role.toLowerCase() as Message['role'] };
+      const mappedB: Message = { id: b.id!, content: b.content, timestamp: b.createdAt!, role: b.role.toLowerCase() as Message['role'] };
+      setMessages((prev) => [...prev.filter(m => m.id !== userMessage.id), mappedU, mappedB]);
+    } catch {
     } finally {
-      setSending(false);
+      setLoading(false);
     }
   };
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-
-  const handleUploadClick = () => fileInputRef.current?.click();
-
-  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !chatId) return;
-    setUploading(true);
-    try {
-      const form = new FormData();
-      form.append('file', file);
-      form.append('sessionId', String(chatId));
-      await api.post('/chat/upload', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setMessages(prev => [...prev, { role: 'SYSTEM', content: `Uploaded file: ${file.name}` }]);
-    } catch (err) {
-      console.error('Upload failed', err);
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+  const scrollToLatest = () => {
+    scrollToBottom();
   };
-
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="animate-spin text-blue-500" size={32} />
-      </div>
-    );
-  }
 
   return (
-    <div className="flex flex-col h-full px-4 md:px-8 py-4">
-      {/* Messages Area */}
-      <div className="flex-1 overflow-hidden">
-        <div className="space-y-6 pb-4 max-w-5xl mx-auto w-full p-4 md:p-6 rounded-2xl bg-[#0f1117]/60 border border-gray-800">
-          {messages.map((msg, i) => (
-            <MessageBubble key={i} role={msg.role} content={msg.content} />
-          ))}
-          
-          {/* Loading Indicator for Bot Response */}
-          {sending && (
-            <div className="flex w-full mt-4 space-x-3 max-w-3xl mx-auto justify-start animate-pulse">
-              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
-                <div className="w-2 h-2 bg-white rounded-full animate-bounce" />
-              </div>
-              <div className="px-4 py-2 bg-gray-800 rounded-2xl rounded-bl-none border border-gray-700">
-                <span className="text-gray-400 text-sm">Thinking...</span>
+    <div className="h-full flex flex-col">
+      {/* Messages Container */}
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto"
+      >
+        <div className="max-w-3xl mx-auto w-full px-4 py-8 space-y-4">
+          {messages.length === 0 ? (
+            <div className="h-full flex items-center justify-center py-20">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-neutral-800 border border-neutral-700 mb-4">
+                  <svg className="w-7 h-7 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
+                </div>
+                <h2 className="text-xl font-medium mb-1 text-neutral-100">Start a conversation</h2>
+                <p className="text-neutral-500 text-sm">Type a message below to begin</p>
               </div>
             </div>
+          ) : (
+            <>
+              {messages.map((message) => (
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  isUser={message.role === 'user'}
+                />
+              ))}
+
+              {/* Typing Indicator */}
+              {loading && (
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-neutral-800 flex items-center justify-center">
+                    <RobotIcon size={16} />
+                  </div>
+                  <div className="flex items-center gap-1 px-4 py-3 bg-neutral-900 rounded-lg border border-neutral-800">
+                    <div className="w-2 h-2 rounded-full bg-neutral-500 animate-bounce"></div>
+                    <div className="w-2 h-2 rounded-full bg-neutral-500 animate-bounce" style={{ animationDelay: '0.15s' }}></div>
+                    <div className="w-2 h-2 rounded-full bg-neutral-500 animate-bounce" style={{ animationDelay: '0.3s' }}></div>
+                  </div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </>
           )}
-          <div ref={messagesEndRef} />
         </div>
       </div>
 
-      {/* Input Area */}
-      <div className="pb-6 bg-gradient-to-t from-[#0f1117] via-[#0f1117] to-transparent pt-4">
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="flex items-center gap-3 mb-3">
-            <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelected} />
-            <button onClick={handleUploadClick} disabled={uploading} className="px-3 py-2 bg-gray-800 border border-gray-700 text-gray-200 rounded-lg hover:bg-gray-700 transition-all disabled:opacity-50 flex items-center gap-2">
-              <Upload size={16} /> {uploading ? 'Uploading...' : 'Upload File'}
-            </button>
-          </div>
-          <ChatInput onSend={handleSendMessage} disabled={sending} />
-        </div>
-      </div>
+      {/* Scroll to Bottom Button */}
+      {isScrolled && (
+        <button
+          onClick={scrollToLatest}
+          className="fixed bottom-28 right-6 w-10 h-10 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center hover:bg-neutral-700 transition-colors z-20"
+        >
+          <svg className="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+          </svg>
+        </button>
+      )}
+
+      {/* Input */}
+      <ChatInput onSendMessage={handleSendMessage} disabled={loading} sessionId={chatId} />
     </div>
   );
 }

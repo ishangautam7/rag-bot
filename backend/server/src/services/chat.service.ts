@@ -35,7 +35,13 @@ export const getUserSessions = async (userId: string) => {
   });
 };
 
-export const addMessage = async (sessionId: string, userId: string, content: string) => {
+export const addMessage = async (
+  sessionId: string,
+  userId: string,
+  content: string,
+  model?: string,
+  apiKey?: string
+) => {
   const session = await prisma.session.findFirst({
     where: { id: sessionId, userId },
   });
@@ -50,14 +56,34 @@ export const addMessage = async (sessionId: string, userId: string, content: str
     },
   });
 
-  // ---------------------------------------------------------
-  // TODO: CONNECT AI MODEL HERE
-  // ---------------------------------------------------------
-  // Right now, we will just echo back a dummy response.
-  // In the next step, we will replace this string with a call to Gemini/OpenAI.
+  // Call Python RAG server
+  let aiResponseText = 'Sorry, I could not process your request.';
 
-  const aiResponseText = `Echo: You said "${content}"`; 
-  
+  try {
+    const ragPayload: Record<string, string> = {
+      session_id: sessionId,
+      message: content,
+    };
+
+    if (model) ragPayload.model = model;
+    if (apiKey) ragPayload.api_key = apiKey;
+
+    const ragResponse = await fetch('http://localhost:8000/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ragPayload),
+    });
+
+    if (ragResponse.ok) {
+      const ragData = await ragResponse.json();
+      aiResponseText = ragData.response || 'No response from AI';
+    } else {
+      console.error('RAG server error:', ragResponse.status);
+    }
+  } catch (error) {
+    console.error('Failed to call RAG server:', error);
+  }
+
   const botMessage = await prisma.message.create({
     data: {
       sessionId,

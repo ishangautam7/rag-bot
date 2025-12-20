@@ -1,75 +1,176 @@
-"use client";
+'use client';
 
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
-import { Bot, Upload } from 'lucide-react';
-import ChatInput from '../components/Chat/ChatInput';
-import api from '../lib/api';
+import { createSession } from '@/app/lib/api';
+import ModelSelector from '@/app/components/Chat/ModelSelector';
+import { RobotIcon, CodeIcon, DocumentIcon, BugIcon, LightbulbIcon, PaperclipIcon, SparkleIcon } from '@/app/components/Icons';
 
-export default function NewChatPage() {
+export default function ChatPage() {
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
 
-  const handleStartChat = async (message: string) => {
+  useEffect(() => {
+    const savedModel = localStorage.getItem('selectedModel');
+    if (savedModel) setSelectedModel(savedModel);
+  }, []);
+
+  const handleModelChange = (model: string) => {
+    setSelectedModel(model);
+    localStorage.setItem('selectedModel', model);
+  };
+
+  const handleSend = async () => {
+    if (!message.trim() || loading) return;
+
+    setLoading(true);
     try {
-      // Create session with first message
-      const res = await api.post('/chat/sessions', { message });
-      const newSessionId = res.data.id;
-      
-      // Send the actual message content to trigger AI response
-      await api.post('/chat/message', {
-        sessionId: newSessionId,
-        content: message
-      });
-
-      // Redirect to the dynamic URL
-      router.refresh(); // Refresh to update sidebar in layout
-      router.push(`/chat/${newSessionId}`);
-      
+      const res = await createSession(message);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = res.data as any;
+      const sessionId = data?.session?.id || data?.id;
+      if (sessionId) {
+        router.push(`/chat/${sessionId}`);
+      }
     } catch (error) {
-      console.error("Failed to start chat", error);
+      console.error('Failed to create session:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleUploadClick = () => fileInputRef?.current?.click();
-  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const form = new FormData();
-      form.append('file', file);
-      await api.post('/chat/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
-    } catch (err) {
-      console.error('Upload failed', err);
-    } finally {
-      setUploading(false);
-      if (fileInputRef?.current) fileInputRef.current.value = '';
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
     }
   };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+  };
+
+  const suggestions = [
+    { icon: <CodeIcon size={18} />, title: 'Write Code', desc: 'Help me write a function' },
+    { icon: <DocumentIcon size={18} />, title: 'Explain', desc: 'Break down a concept' },
+    { icon: <BugIcon size={18} />, title: 'Debug', desc: 'Fix an error' },
+    { icon: <LightbulbIcon size={18} />, title: 'Ideas', desc: 'Brainstorm solutions' },
+  ];
 
   return (
-    <div className="flex flex-col h-full px-4 md:px-8 py-4">
-      <div className="flex-1 flex flex-col items-center justify-center p-8 md:p-12 text-center space-y-6">
-        <div className="w-20 h-20 bg-gray-800 rounded-3xl flex items-center justify-center shadow-2xl mb-4">
-          <Bot size={40} className="text-blue-500" />
+    <div className="h-full flex flex-col bg-[#0d0d0d]">
+      {/* Main Content */}
+      <div className="flex-1 flex items-center justify-center px-4 py-6">
+        <div className="max-w-lg w-full text-center">
+          {/* Icon */}
+          <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600">
+            <RobotIcon size={24} className="text-white" />
+          </div>
+
+          {/* Heading */}
+          <h1 className="text-2xl font-semibold text-white mb-1">
+            How can I help?
+          </h1>
+          <p className="text-neutral-500 text-sm mb-6">
+            Ask a question or choose a suggestion
+          </p>
+
+          {/* Suggestions */}
+          <div className="grid grid-cols-2 gap-2 mb-6">
+            {suggestions.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => setMessage(s.title + ': ')}
+                className="text-left p-3 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] hover:border-emerald-500/30 hover:bg-[#1f1f1f] transition-all"
+              >
+                <div className="flex items-start gap-2">
+                  <span className="text-base text-neutral-400">{s.icon}</span>
+                  <div>
+                    <p className="font-medium text-white text-sm">{s.title}</p>
+                    <p className="text-xs text-neutral-500">{s.desc}</p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* File Upload */}
+          <div
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            className={`p-4 rounded-lg border border-dashed transition-colors mb-4 ${dragActive
+              ? 'border-emerald-500/50 bg-emerald-500/5'
+              : 'border-[#2a2a2a] hover:border-[#3a3a3a]'
+              }`}
+          >
+            <p className="text-neutral-500 text-xs">
+              <span className="flex items-center gap-1"><PaperclipIcon size={14} className="text-neutral-500" /> <span>Drag files here</span></span>
+            </p>
+          </div>
         </div>
-        <h1 className="text-3xl font-bold text-white">How can I help you today?</h1>
-        <p className="text-gray-400 max-w-md">
-          I can help you write code, plan projects, or answer questions about your documents.
-        </p>
       </div>
 
-      <div className="pb-6">
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="flex items-center gap-3 mb-3">
-            <input ref={fileInputRef!} type="file" className="hidden" onChange={handleFileSelected} />
-            <button onClick={handleUploadClick} disabled={uploading} className="px-3 py-2 bg-gray-800 border border-gray-700 text-gray-200 rounded-lg hover:bg-gray-700 transition-all disabled:opacity-50 flex items-center gap-2">
-              <Upload size={16} /> {uploading ? 'Uploading...' : 'Upload File'}
-            </button>
+      {/* Input Area */}
+      <div className="sticky bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0d0d0d] via-[#0d0d0d] to-transparent">
+        <div className="max-w-lg mx-auto">
+          {/* Input Box */}
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-2 focus-within:border-emerald-500/30 transition-colors">
+            {/* Label */}
+            <div className="flex items-center gap-2 px-2 mb-2">
+              <span className="text-emerald-400 text-xs flex items-center gap-1"><SparkleIcon size={10} /> THE MESSAGE</span>
+            </div>
+
+            <textarea
+              ref={textareaRef}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="e.g. Design a robust system architecture..."
+              rows={2}
+              className="w-full bg-transparent text-white placeholder-neutral-600 resize-none focus:outline-none text-sm px-2"
+            />
+
+            {/* Bottom Row */}
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#2a2a2a]">
+              <div className="flex items-center gap-2">
+                <ModelSelector
+                  selectedModel={selectedModel}
+                  onModelChange={handleModelChange}
+                  compact={true}
+                />
+              </div>
+
+              <button
+                onClick={handleSend}
+                disabled={!message.trim() || loading}
+                className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded transition-colors"
+              >
+                {loading ? '...' : 'Send'}
+              </button>
+            </div>
           </div>
-          <ChatInput onSend={handleStartChat} />
+
+          <p className="text-[10px] text-neutral-600 text-center mt-2">
+            Enter to send • Shift+Enter for new line
+          </p>
         </div>
       </div>
     </div>

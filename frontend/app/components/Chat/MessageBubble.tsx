@@ -1,39 +1,41 @@
-import { User, Bot } from 'lucide-react';
-import { clsx } from 'clsx';
+'use client';
 
-interface MessageProps {
-  role: 'USER' | 'ASSISTANT' | 'SYSTEM';
-  content: string;
+import { Message } from '@/app/types';
+import { RobotIcon } from '@/app/components/Icons';
+
+interface MessageBubbleProps {
+  message: Message;
+  isUser: boolean;
 }
 
-export default function MessageBubble({ role, content }: MessageProps) {
-  const isUser = role === 'USER';
+export default function MessageBubble({ message, isUser }: MessageBubbleProps) {
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
-    <div className={clsx(
-      "flex w-full mt-4 space-x-3 max-w-3xl mx-auto",
-      isUser ? "justify-end" : "justify-start"
-    )}>
-      {!isUser && (
-        <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
-          <Bot size={18} className="text-white" />
-        </div>
-      )}
-      
-      <div className={clsx(
-        "px-5 py-3 rounded-2xl max-w-[80%] leading-relaxed shadow-lg",
-        isUser 
-          ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-br-none"
-          : "bg-gray-900 text-gray-100 rounded-bl-none border border-gray-700"
-      )}>
-        <p className="whitespace-pre-wrap text-sm md:text-base">{content}</p>
+    <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
+      {/* Avatar */}
+      <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm ${isUser
+        ? 'bg-neutral-700 text-neutral-300'
+        : 'bg-neutral-800 text-neutral-400'
+        }`}>
+        {isUser ? 'U' : <RobotIcon size={16} />}
       </div>
 
-      {isUser && (
-        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
-          <User size={18} className="text-gray-300" />
+      {/* Message Content */}
+      <div className={`max-w-[75%] ${isUser ? 'text-right' : ''}`}>
+        <div className={`px-4 py-3 rounded-xl text-sm leading-relaxed ${isUser
+          ? 'bg-neutral-100 text-neutral-900 rounded-tr-sm'
+          : 'bg-neutral-900 border border-neutral-800 text-neutral-200 rounded-tl-sm'
+          }`}>
+          <p className="whitespace-pre-wrap">{message.content}</p>
         </div>
-      )}
+        <p className={`text-xs text-neutral-500 mt-1 ${isUser ? 'text-right' : ''}`}>
+          {formatTime(message.timestamp)}
+        </p>
+      </div>
     </div>
   );
 }
