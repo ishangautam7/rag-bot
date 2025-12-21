@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import * as chatController from '../controller/chat.controller';
+import * as shareController from '../controller/share.controller';
+import * as groupController from '../controller/group.controller';
 import { protect } from '../middlewares/auth';
 import multer from 'multer';
 import path from 'path';
@@ -39,4 +41,21 @@ router.get('/sessions', chatController.getHistory);       // List old chats
 router.get('/sessions/:id', chatController.getMessages);  // Load specific chat
 router.post('/message', chatController.sendMessage);      // Send message
 
+// Share endpoints (protected)
+router.post('/sessions/:id/share', shareController.enableShare);    // Enable sharing
+router.delete('/sessions/:id/share', shareController.disableShare); // Disable sharing
+router.get('/sessions/:id/share', shareController.getShareStatus);  // Get share status
+
+// Group chat endpoints (protected)
+router.post('/group', groupController.createGroup);                      // Create group chat
+router.post('/sessions/:id/convert-to-group', groupController.convertToGroup);  // Convert to group
+router.post('/sessions/:id/invite', groupController.generateInvite);     // Generate invite
+router.post('/join/:token', groupController.joinGroup);                  // Join via invite
+router.post('/sessions/:id/leave', groupController.leaveGroup);          // Leave group
+router.get('/sessions/:id/members', groupController.getMembers);         // Get members
+router.delete('/sessions/:id/members/:userId', groupController.removeMember);  // Remove member
+router.get('/sessions/:id/is-owner', groupController.checkOwner);        // Check if owner
+
 export default router;
+
+

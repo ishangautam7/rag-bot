@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { uploadFile } from '@/app/lib/api';
 import ModelSelector from './ModelSelector';
 import { PaperclipIcon } from '@/app/components/Icons';
+import { useFreeMessageLimit } from '@/app/hooks/useFreeMessageLimit';
 
 interface ChatInputProps {
   onSendMessage: (message: string, files?: File[], model?: string, apiKey?: string) => void;
@@ -19,6 +20,7 @@ export default function ChatInput({ onSendMessage, disabled = false, sessionId }
   const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { remaining, isFreeModel, refreshUsage, canSendFreeMessage } = useFreeMessageLimit();
 
   useEffect(() => {
     const savedModel = localStorage.getItem('selectedModel');
@@ -82,8 +84,20 @@ export default function ChatInput({ onSendMessage, disabled = false, sessionId }
 
   const handleSend = () => {
     if (message.trim()) {
+      // Check free model limit
+      if (isFreeModel(selectedModel) && !canSendFreeMessage()) {
+        alert('You have reached your daily limit of 15 free messages. Please try again tomorrow or switch to a paid model.');
+        return;
+      }
+
       const apiKey = getApiKeyForModel(selectedModel);
       onSendMessage(message, files, selectedModel, apiKey);
+
+      // Refresh usage after sending
+      if (isFreeModel(selectedModel)) {
+        refreshUsage();
+      }
+
       setMessage('');
       setFiles([]);
     }
@@ -120,6 +134,17 @@ export default function ChatInput({ onSendMessage, disabled = false, sessionId }
               </div>
             ))}
             {uploading && <span className="text-neutral-500 text-xs">Uploading...</span>}
+          </div>
+        )}
+
+        {/* Free model limit indicator */}
+        {isFreeModel(selectedModel) && (
+          <div className={`text-center mb-2 text-xs ${remaining <= 3 ? 'text-orange-400' : 'text-neutral-500'}`}>
+            {remaining > 0 ? (
+              <span>{remaining} message{remaining !== 1 ? 's' : ''} remaining today</span>
+            ) : (
+              <span className="text-red-400">Daily limit reached • Switch to a paid model</span>
+            )}
           </div>
         )}
 

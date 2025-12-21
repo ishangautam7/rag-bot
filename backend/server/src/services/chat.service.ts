@@ -1,4 +1,6 @@
 import { prisma } from '../db';
+import { emitNewMessage } from './socket.service';
+import { isFreeModel, canSendFreeMessage, incrementFreeMessageCount } from './usage.service';
 
 export const createSession = async (userId: string, firstMessage?: string, model?: string, apiKey?: string) => {
   const session = await prisma.session.create({
@@ -11,7 +13,6 @@ export const createSession = async (userId: string, firstMessage?: string, model
   let botMessage = null;
 
   if (firstMessage) {
-    // Save user message
     await prisma.message.create({
       data: {
         sessionId: session.id,
@@ -63,16 +64,65 @@ export const createSession = async (userId: string, firstMessage?: string, model
 
 //history
 export const getUserSessions = async (userId: string) => {
-  return await prisma.session.findMany({
+  // Get sessions user owns
+  const ownedSessions = await prisma.session.findMany({
     where: { userId },
     orderBy: { updatedAt: 'desc' },
     include: {
       messages: {
-        take: 1, // Preview last message
+        take: 1,
         orderBy: { createdAt: 'desc' },
       },
     },
   });
+
+  // Get sessions user is a member of (but doesn't own)
+  const memberSessions = await prisma.session.findMany({
+    where: {
+      members: {
+        some: { userId }
+      },
+      NOT: { userId } // Exclude already owned sessions
+    },
+    orderBy: { updatedAt: 'desc' },
+    include: {
+      messages: {
+        take: 1,
+        orderBy: { createdAt: 'desc' },
+      },
+    },
+  });
+
+  // Add isOwner flag and combine
+  const ownedWithFlag = ownedSessions.map(s => ({ ...s, isOwner: true }));
+  const memberWithFlag = memberSessions.map(s => ({ ...s, isOwner: false }));
+
+  const allSessions = [...ownedWithFlag, ...memberWithFlag];
+
+  return allSessions.sort((a, b) =>
+    new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  );
+};
+
+// Helper to check if user can access session (owner or member)
+const canAccessSession = async (sessionId: string, userId: string) => {
+  // Check if owner
+  const owned = await prisma.session.findFirst({
+    where: { id: sessionId, userId },
+  });
+  if (owned) return owned;
+
+  // Check if member
+  const membership = await prisma.sessionMember.findUnique({
+    where: {
+      sessionId_userId: { sessionId, userId }
+    }
+  });
+  if (membership) {
+    return await prisma.session.findUnique({ where: { id: sessionId } });
+  }
+
+  return null;
 };
 
 export const addMessage = async (
@@ -82,17 +132,26 @@ export const addMessage = async (
   model?: string,
   apiKey?: string
 ) => {
-  const session = await prisma.session.findFirst({
-    where: { id: sessionId, userId },
-  });
+  const session = await canAccessSession(sessionId, userId);
 
   if (!session) throw new Error('Session not found or access denied');
+
+  // Check free model limit
+  if (model && isFreeModel(model)) {
+    const canSend = await canSendFreeMessage(userId);
+    if (!canSend) {
+      throw new Error('Daily free message limit reached. Please try again tomorrow or use a paid model.');
+    }
+    // Increment usage
+    await incrementFreeMessageCount(userId);
+  }
 
   const userMessage = await prisma.message.create({
     data: {
       sessionId,
       content,
       role: 'USER',
+      senderId: userId, // Track who sent the message
     },
   });
 
@@ -132,6 +191,10 @@ export const addMessage = async (
     },
   });
 
+  // Emit messages via WebSocket for real-time sync
+  emitNewMessage(sessionId, userMessage);
+  emitNewMessage(sessionId, botMessage);
+
   await prisma.session.update({
     where: { id: sessionId },
     data: { updatedAt: new Date() },
@@ -141,14 +204,21 @@ export const addMessage = async (
 };
 
 export const getSessionMessages = async (sessionId: string, userId: string) => {
-  const session = await prisma.session.findFirst({
-    where: { id: sessionId, userId },
-  });
+  const session = await canAccessSession(sessionId, userId);
 
   if (!session) return null;
 
   return await prisma.message.findMany({
     where: { sessionId },
-    orderBy: { createdAt: 'asc' }, // Oldest first 
+    orderBy: { createdAt: 'asc' },
+    include: {
+      sender: {
+        select: {
+          id: true,
+          username: true,
+          avatar: true,
+        }
+      }
+    }
   });
 };

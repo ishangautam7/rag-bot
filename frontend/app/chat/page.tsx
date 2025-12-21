@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createSession } from '@/app/lib/api';
 import ModelSelector from '@/app/components/Chat/ModelSelector';
 import { RobotIcon, CodeIcon, DocumentIcon, BugIcon, LightbulbIcon, PaperclipIcon, SparkleIcon } from '@/app/components/Icons';
+import { useFreeMessageLimit } from '@/app/hooks/useFreeMessageLimit';
 
 const FREE_MODEL_ID = 'openrouter/auto';
 
@@ -15,6 +16,7 @@ export default function ChatPage() {
   const [selectedModel, setSelectedModel] = useState(FREE_MODEL_ID);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
+  const { remaining, isFreeModel, refreshUsage, canSendFreeMessage } = useFreeMessageLimit();
 
   useEffect(() => {
     const savedModel = localStorage.getItem('selectedModel');
@@ -43,14 +45,23 @@ export default function ChatPage() {
   const handleSend = async () => {
     if (!message.trim() || loading) return;
 
+    // Check free model limit
+    if (isFreeModel(selectedModel) && !canSendFreeMessage()) {
+      alert('You have reached your daily limit of 15 free messages. Please try again tomorrow or switch to a paid model.');
+      return;
+    }
+
     setLoading(true);
     try {
       const apiKey = getApiKey();
       const res = await createSession(message, selectedModel, apiKey);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = res.data as any;
       const sessionId = data?.session?.id || data?.id;
       if (sessionId) {
+        // Refresh usage if free model
+        if (isFreeModel(selectedModel)) {
+          refreshUsage();
+        }
         router.push(`/chat/${sessionId}`);
       }
     } catch (error) {
@@ -148,6 +159,16 @@ export default function ChatPage() {
       {/* Input Area */}
       <div className="sticky bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0d0d0d] via-[#0d0d0d] to-transparent">
         <div className="max-w-lg mx-auto">
+          {/* Free model limit indicator */}
+          {isFreeModel(selectedModel) && (
+            <div className={`text-center mb-2 text-xs ${remaining <= 3 ? 'text-orange-400' : 'text-neutral-500'}`}>
+              {remaining > 0 ? (
+                <span>{remaining} message{remaining !== 1 ? 's' : ''} remaining today</span>
+              ) : (
+                <span className="text-red-400">Daily limit reached • Switch to a paid model</span>
+              )}
+            </div>
+          )}
           {/* Input Box */}
           <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-2 focus-within:border-emerald-500/30 transition-colors">
             {/* Label */}

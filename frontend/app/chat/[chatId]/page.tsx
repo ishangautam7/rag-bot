@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import ChatInput from '@/app/components/Chat/ChatInput';
 import MessageBubble from '@/app/components/Chat/MessageBubble';
+import ShareButton from '@/app/components/Chat/ShareButton';
 import { Message } from '@/app/types';
 import { getMessages, sendMessage } from '@/app/lib/api';
 import type { Message as BackendMessage, SendMessageResponse } from '@/app/lib/types';
 import { RobotIcon } from '@/app/components/Icons';
+import { useSocket } from '@/app/hooks/useSocket';
 
 export default function ChatPage() {
   const { chatId } = useParams() as { chatId: string };
@@ -16,6 +18,51 @@ export default function ChatPage() {
   const [isScrolled, setIsScrolled] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const processedMessageIds = useRef<Set<string>>(new Set());
+
+  // Handle incoming real-time messages
+  const handleNewMessage = useCallback((msg: any) => {
+    // Avoid duplicates
+    if (msg.id && processedMessageIds.current.has(msg.id)) return;
+    if (msg.id) processedMessageIds.current.add(msg.id);
+
+    const mapped: Message = {
+      id: msg.id,
+      content: msg.content,
+      timestamp: msg.createdAt,
+      role: msg.role?.toLowerCase() as Message['role'],
+    };
+
+    setMessages(prev => {
+      // Check if message already exists
+      if (prev.some(m => m.id === mapped.id)) return prev;
+      return [...prev, mapped];
+    });
+  }, []);
+
+  // Check if session is collaborative
+  const [isCollaborative, setIsCollaborative] = useState(false);
+
+  useEffect(() => {
+    // Check if this session has collaborators
+    const checkCollaborative = async () => {
+      try {
+        const { getMembers } = await import('@/app/lib/api');
+        const res = await getMembers(chatId);
+        setIsCollaborative(res.data.length > 0);
+      } catch {
+        setIsCollaborative(false);
+      }
+    };
+    if (chatId) checkCollaborative();
+  }, [chatId]);
+
+  // Connect to WebSocket only for collaborative sessions
+  const { connected } = useSocket({
+    sessionId: chatId,
+    isCollaborative,
+    onNewMessage: handleNewMessage,
+  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -37,6 +84,8 @@ export default function ChatPage() {
           timestamp: m.createdAt!,
           role: m.role.toLowerCase() as Message['role'],
         }));
+        // Track processed message IDs
+        mapped.forEach(m => processedMessageIds.current.add(m.id));
         setMessages(mapped);
       } catch { }
     };
@@ -65,9 +114,19 @@ export default function ChatPage() {
     try {
       const res = await sendMessage(chatId, content, model, apiKey);
       const { userMessage: u, botMessage: b } = res.data as SendMessageResponse;
+
+      // Track IDs to prevent duplicates from WebSocket
+      if (u.id) processedMessageIds.current.add(u.id);
+      if (b.id) processedMessageIds.current.add(b.id);
+
       const mappedU: Message = { id: u.id!, content: u.content, timestamp: u.createdAt!, role: u.role.toLowerCase() as Message['role'] };
       const mappedB: Message = { id: b.id!, content: b.content, timestamp: b.createdAt!, role: b.role.toLowerCase() as Message['role'] };
-      setMessages((prev) => [...prev.filter(m => m.id !== userMessage.id), mappedU, mappedB]);
+
+      setMessages((prev) => {
+        // Filter out temp message and any existing duplicates
+        const filtered = prev.filter(m => m.id !== userMessage.id && m.id !== u.id && m.id !== b.id);
+        return [...filtered, mappedU, mappedB];
+      });
     } catch {
     } finally {
       setLoading(false);
@@ -79,7 +138,19 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col relative">
+      {/* Share Button & Live Indicator - Fixed in top right */}
+      <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+        {/* Live indicator for collaborative sessions */}
+        {connected && (
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-green-500/20 border border-green-500/30 rounded-lg">
+            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+            <span className="text-xs text-green-400 font-medium">Live</span>
+          </div>
+        )}
+        <ShareButton sessionId={chatId} />
+      </div>
+
       {/* Messages Container */}
       <div
         ref={scrollContainerRef}

@@ -25,6 +25,9 @@ export type Session = {
   title?: string | null;
   updatedAt?: string;
   messages?: Message[];
+  isPublic?: boolean;
+  isGroupChat?: boolean;
+  isOwner?: boolean; // true if user owns this session
 };
 
 export type CreateSessionResponse = Session;

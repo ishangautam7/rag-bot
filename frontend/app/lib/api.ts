@@ -53,4 +53,74 @@ export const uploadFile = (file: File, sessionId?: string) => {
   return api.post<UploadResponse>('/chat/upload', form);
 };
 
+// Share
+export interface ShareStatus {
+  isPublic: boolean;
+  shareToken: string | null;
+  sharedAt: string | null;
+}
+
+export interface SharedChat {
+  id: string;
+  title: string;
+  sharedAt: string;
+  user: { username: string; avatar: string | null };
+  messages: Message[];
+}
+
+export const enableShare = (sessionId: string) =>
+  api.post<{ shareToken: string; isPublic: boolean }>(`/chat/sessions/${sessionId}/share`);
+
+export const disableShare = (sessionId: string) =>
+  api.delete<{ isPublic: boolean }>(`/chat/sessions/${sessionId}/share`);
+
+export const getShareStatus = (sessionId: string) =>
+  api.get<ShareStatus>(`/chat/sessions/${sessionId}/share`);
+
+export const getSharedChat = (token: string) =>
+  api.get<SharedChat>(`/shared/${token}`);
+
+// Group Chat
+export interface GroupMember {
+  id: string;
+  role: 'OWNER' | 'MEMBER';
+  joinedAt: string;
+  user: {
+    id: string;
+    username: string | null;
+    email: string;
+    avatar: string | null;
+  };
+}
+
+export const createGroupChat = (title: string) =>
+  api.post<Session>('/chat/group', { title });
+
+export const convertToGroup = (sessionId: string) =>
+  api.post<{ success: boolean }>(`/chat/sessions/${sessionId}/convert-to-group`);
+
+export const generateInvite = (sessionId: string) =>
+  api.post<{ inviteToken: string }>(`/chat/sessions/${sessionId}/invite`);
+
+export const joinGroup = (token: string) =>
+  api.post<{ sessionId: string; alreadyMember: boolean }>(`/chat/join/${token}`);
+
+export const leaveGroup = (sessionId: string) =>
+  api.post<{ success: boolean }>(`/chat/sessions/${sessionId}/leave`);
+
+export const getMembers = (sessionId: string) =>
+  api.get<GroupMember[]>(`/chat/sessions/${sessionId}/members`);
+
+export const removeMember = (sessionId: string, userId: string) =>
+  api.delete<{ success: boolean }>(`/chat/sessions/${sessionId}/members/${userId}`);
+
+export const checkOwner = (sessionId: string) =>
+  api.get<{ isOwner: boolean }>(`/chat/sessions/${sessionId}/is-owner`);
+
+// Usage tracking
+export const getUsage = () =>
+  api.get<{ remaining: number; limit: number; used: number }>('/usage');
+
 export default api;
+
+

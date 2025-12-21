@@ -16,6 +16,9 @@ interface ChatHistory {
   id: string;
   title: string;
   date: string;
+  isPublic?: boolean;
+  isGroupChat?: boolean;
+  isOwner?: boolean;
 }
 
 interface UserProfile {
@@ -65,6 +68,9 @@ export default function SideBar({ sidebarOpen, onClose }: SideBarProps) {
           id: s.id,
           title: s.title || 'Untitled Chat',
           date: toDayLabel(s.updatedAt),
+          isPublic: s.isPublic,
+          isGroupChat: s.isGroupChat,
+          isOwner: s.isOwner !== false, // Default to true if not specified
         }));
         setChats(mapped);
       } catch {
@@ -84,12 +90,9 @@ export default function SideBar({ sidebarOpen, onClose }: SideBarProps) {
     router.push('/login');
   };
 
-  const groupedChats = {
-    today: chats.filter((c) => c.date === 'Today'),
-    yesterday: chats.filter((c) => c.date === 'Yesterday'),
-    week: chats.filter((c) => c.date === 'This Week'),
-    older: chats.filter((c) => c.date === 'Older'),
-  };
+  // Separate owned and shared chats
+  const myChats = chats.filter(c => c.isOwner);
+  const sharedChats = chats.filter(c => !c.isOwner);
 
   return (
     <div className="h-full flex flex-col bg-[#141414] text-sm">
@@ -130,19 +133,37 @@ export default function SideBar({ sidebarOpen, onClose }: SideBarProps) {
             ))}
           </div>
         ) : (
-          <div className="space-y-3">
-            {groupedChats.today.length > 0 && (
-              <ChatGroup title="Today" chats={groupedChats.today} sidebarOpen={sidebarOpen} pathname={pathname} />
+          <div className="space-y-4">
+            {/* My Chats Section */}
+            {myChats.length > 0 && (
+              <div>
+                {sidebarOpen && (
+                  <p className="text-[10px] font-medium text-neutral-500 uppercase tracking-wider mb-1 px-2 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    My Chats
+                  </p>
+                )}
+                <ChatList chats={myChats} sidebarOpen={sidebarOpen} pathname={pathname} />
+              </div>
             )}
-            {groupedChats.yesterday.length > 0 && (
-              <ChatGroup title="Yesterday" chats={groupedChats.yesterday} sidebarOpen={sidebarOpen} pathname={pathname} />
+
+            {/* Shared with Me Section */}
+            {sharedChats.length > 0 && (
+              <div>
+                {sidebarOpen && (
+                  <p className="text-[10px] font-medium text-blue-400 uppercase tracking-wider mb-1 px-2 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Shared with Me
+                  </p>
+                )}
+                <ChatList chats={sharedChats} sidebarOpen={sidebarOpen} pathname={pathname} isSharedSection={true} />
+              </div>
             )}
-            {groupedChats.week.length > 0 && (
-              <ChatGroup title="This Week" chats={groupedChats.week} sidebarOpen={sidebarOpen} pathname={pathname} />
-            )}
-            {groupedChats.older.length > 0 && (
-              <ChatGroup title="Older" chats={groupedChats.older} sidebarOpen={sidebarOpen} pathname={pathname} />
-            )}
+
             {chats.length === 0 && (
               <p className="text-neutral-500 text-xs text-center py-4">No chats yet</p>
             )}
@@ -166,13 +187,6 @@ export default function SideBar({ sidebarOpen, onClose }: SideBarProps) {
           className="flex items-center gap-2 px-2 py-1.5 rounded text-neutral-400 hover:text-white hover:bg-white/5 transition-colors"
         >
           <RobotIcon size={16} />
-          {sidebarOpen && <span>Models</span>}
-        </Link>
-        <Link
-          href="/profile"
-          className="flex items-center gap-2 px-2 py-1.5 rounded text-neutral-400 hover:text-white hover:bg-white/5 transition-colors"
-        >
-          <SettingsIcon size={16} />
           {sidebarOpen && <span>Settings</span>}
         </Link>
         <button
@@ -198,24 +212,54 @@ function ChatGroup({ title, chats, sidebarOpen, pathname }: {
       {sidebarOpen && (
         <p className="text-[10px] font-medium text-neutral-500 uppercase tracking-wider mb-1 px-2">{title}</p>
       )}
-      <div className="space-y-0.5">
-        {chats.map((chat) => (
-          <Link
-            key={chat.id}
-            href={`/chat/${chat.id}`}
-            className={`block px-2 py-1.5 rounded transition-colors truncate ${pathname === `/chat/${chat.id}`
-              ? 'bg-emerald-500/20 text-emerald-400'
-              : 'text-neutral-400 hover:bg-white/5 hover:text-white'
-              }`}
-          >
-            {sidebarOpen ? (
-              <span className="truncate text-xs">{chat.title}</span>
-            ) : (
-              <span className="font-medium text-xs">{chat.title.charAt(0)}</span>
-            )}
-          </Link>
-        ))}
-      </div>
+      <ChatList chats={chats} sidebarOpen={sidebarOpen} pathname={pathname} />
     </div>
   );
 }
+
+function ChatList({ chats, sidebarOpen, pathname, isSharedSection = false }: {
+  chats: ChatHistory[];
+  sidebarOpen: boolean;
+  pathname: string | null;
+  isSharedSection?: boolean;
+}) {
+  return (
+    <div className="space-y-0.5">
+      {chats.map((chat) => (
+        <Link
+          key={chat.id}
+          href={`/chat/${chat.id}`}
+          className={`flex items-center gap-1.5 px-2 py-1.5 rounded transition-colors truncate ${pathname === `/chat/${chat.id}`
+            ? isSharedSection ? 'bg-blue-500/20 text-blue-400' : 'bg-emerald-500/20 text-emerald-400'
+            : 'text-neutral-400 hover:bg-white/5 hover:text-white'
+            }`}
+        >
+          {sidebarOpen ? (
+            <>
+              <span className="truncate text-xs flex-1">{chat.title}</span>
+              {chat.isGroupChat && (
+                <span className="text-blue-400" title="Collaborative">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </span>
+              )}
+              {chat.isPublic && !chat.isGroupChat && (
+                <span className="text-emerald-400" title="View-only shared">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="font-medium text-xs">{chat.title.charAt(0)}</span>
+          )}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+

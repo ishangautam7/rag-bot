@@ -36,7 +36,9 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  sessions  Session[]
+  sessions       Session[]
+  memberships    SessionMember[]
+  sentMessages   Message[]
 }
 
 model Session {
@@ -44,14 +46,41 @@ model Session {
   title     String?   @default("New Chat") 
   status    ChatStatus @default(ACTIVE)
   
+  // Sharing
+  isPublic    Boolean   @default(false)
+  shareToken  String?   @unique
+  sharedAt    DateTime?
+  
+  // Group Chat
+  isGroupChat Boolean   @default(false)
+  
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   messages  Message[]
+  members   SessionMember[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   
+  @@index([userId])
+  @@index([shareToken])
+}
+
+model SessionMember {
+  id        String   @id @default(uuid())
+  
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  role      MemberRole @default(MEMBER)
+  joinedAt  DateTime   @default(now())
+  
+  @@unique([sessionId, userId])
+  @@index([sessionId])
   @@index([userId])
 }
 
@@ -64,10 +93,15 @@ model Message {
   
   sessionId String
   session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  // Sender for group chats (null for AI messages)
+  senderId  String?
+  sender    User?    @relation(fields: [senderId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   
   @@index([sessionId])
+  @@index([senderId])
 }
 
 enum Role {
@@ -81,3 +115,25 @@ enum ChatStatus {
   ARCHIVED
   DELETED
 }
+
+enum MemberRole {
+  OWNER
+  MEMBER
+}
+
+// Track free model usage per user per day
+model UsageLog {
+  id        String   @id @default(uuid())
+  
+  userId    String
+  date      String   
+  
+  freeMessageCount Int @default(0)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([userId, date])
+  @@index([userId])
+}
+

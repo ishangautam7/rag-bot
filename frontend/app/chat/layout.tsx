@@ -24,7 +24,7 @@ export default function ChatLayout({
     <div className="min-h-screen bg-[#0d0d0d] flex overflow-hidden">
       {/* Sidebar - Slimmer */}
       <div
-        className={`fixed z-40 lg:static bg-[#141414] border-r border-[#222] transition-all duration-200 h-screen ${sidebarOpen ? 'w-48' : '-translate-x-full lg:w-12'
+        className={`fixed z-40 lg:static bg-[#141414] border-r border-[#222] transition-all duration-200 h-screen ${sidebarOpen ? 'w-48 translate-x-0' : 'w-48 -translate-x-full lg:translate-x-0 lg:w-12'
           }`}
       >
         <SideBar sidebarOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
