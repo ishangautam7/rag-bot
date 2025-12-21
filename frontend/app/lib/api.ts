@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { AuthResponse, CreateSessionResponse, SendMessageResponse, Session, Message, UploadResponse } from './types';
 
 const api = axios.create({
-  baseURL: 'http://localhost:4000/api',
+  baseURL: 'https://api.ishangautam7.com.np/api',
 });
 
 api.interceptors.request.use((config) => {
@@ -49,7 +49,6 @@ export const uploadFile = (file: File, sessionId?: string) => {
   const form = new FormData();
   form.append('file', file);
   if (sessionId) form.append('sessionId', sessionId);
-  // Don't set Content-Type header manually - axios will set it with correct boundary
   return api.post<UploadResponse>('/chat/upload', form);
 };
 
