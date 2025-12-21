@@ -8,7 +8,7 @@ const app = express();
 
 // CORS - must be before other middleware
 app.use(cors({
-    origin: ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"],
+    origin: ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "https://rag-chat-tau.vercel.app", "http://chat.ishan-gautam.com.np/"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
