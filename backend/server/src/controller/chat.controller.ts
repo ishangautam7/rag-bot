@@ -8,10 +8,10 @@ import FormData from 'form-data';
 export const createChat = async (req: AuthRequest, res: Response): Promise<any> => {
   try {
     const userId = req.user!;
-    const { message } = req.body;
+    const { message, model, apiKey } = req.body;
 
-    const session = await chatService.createSession(userId, message);
-    return res.status(201).json(session);
+    const result = await chatService.createSession(userId, message, model, apiKey);
+    return res.status(201).json(result);
   } catch (error) {
     return res.status(500).json({ error: 'Failed to create session' });
   }

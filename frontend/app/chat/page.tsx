@@ -6,11 +6,13 @@ import { createSession } from '@/app/lib/api';
 import ModelSelector from '@/app/components/Chat/ModelSelector';
 import { RobotIcon, CodeIcon, DocumentIcon, BugIcon, LightbulbIcon, PaperclipIcon, SparkleIcon } from '@/app/components/Icons';
 
+const FREE_MODEL_ID = 'openrouter/auto';
+
 export default function ChatPage() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash');
+  const [selectedModel, setSelectedModel] = useState(FREE_MODEL_ID);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
 
@@ -24,12 +26,27 @@ export default function ChatPage() {
     localStorage.setItem('selectedModel', model);
   };
 
+  // Get API key from localStorage based on model provider
+  const getApiKey = () => {
+    try {
+      const savedKeys = localStorage.getItem('modelApiKeys');
+      if (!savedKeys) return undefined;
+      const keys = JSON.parse(savedKeys);
+      if (selectedModel.startsWith('gpt')) return keys.openai;
+      if (selectedModel.startsWith('gemini')) return keys.google;
+      return undefined; // Free models don't need API key
+    } catch {
+      return undefined;
+    }
+  };
+
   const handleSend = async () => {
     if (!message.trim() || loading) return;
 
     setLoading(true);
     try {
-      const res = await createSession(message);
+      const apiKey = getApiKey();
+      const res = await createSession(message, selectedModel, apiKey);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = res.data as any;
       const sessionId = data?.session?.id || data?.id;

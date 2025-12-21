@@ -1,6 +1,6 @@
 import { prisma } from '../db';
 
-export const createSession = async (userId: string, firstMessage?: string) => {
+export const createSession = async (userId: string, firstMessage?: string, model?: string, apiKey?: string) => {
   const session = await prisma.session.create({
     data: {
       userId,
@@ -8,7 +8,10 @@ export const createSession = async (userId: string, firstMessage?: string) => {
     },
   });
 
+  let botMessage = null;
+
   if (firstMessage) {
+    // Save user message
     await prisma.message.create({
       data: {
         sessionId: session.id,
@@ -16,9 +19,46 @@ export const createSession = async (userId: string, firstMessage?: string) => {
         role: 'USER',
       },
     });
+
+    // Call RAG server to get AI response
+    let aiResponseText = 'Sorry, I could not process your request.';
+
+    try {
+      const ragPayload: Record<string, string> = {
+        session_id: session.id,
+        message: firstMessage,
+      };
+
+      if (model) ragPayload.model = model;
+      if (apiKey) ragPayload.api_key = apiKey;
+
+      const ragResponse = await fetch('http://localhost:8000/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ragPayload),
+      });
+
+      if (ragResponse.ok) {
+        const ragData = await ragResponse.json();
+        aiResponseText = ragData.response || 'No response from AI';
+      } else {
+        console.error('RAG server error:', ragResponse.status);
+      }
+    } catch (error) {
+      console.error('Failed to call RAG server:', error);
+    }
+
+    // Save AI response
+    botMessage = await prisma.message.create({
+      data: {
+        sessionId: session.id,
+        content: aiResponseText,
+        role: 'ASSISTANT',
+      },
+    });
   }
 
-  return session;
+  return { session, botMessage };
 };
 
 //history

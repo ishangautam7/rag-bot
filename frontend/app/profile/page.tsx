@@ -9,17 +9,19 @@ import { UserIcon, RobotIcon, KeyIcon, SettingsIcon, InfoIcon, ShieldIcon, Arrow
 interface Model {
     id: string;
     name: string;
-    provider: 'google' | 'openai';
+    provider: 'openrouter' | 'google' | 'openai';
     description: string;
+    isFree?: boolean;
 }
 
+const FREE_MODEL_ID = 'openrouter/auto';
+
 const AVAILABLE_MODELS: Model[] = [
-    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'google', description: 'Fast and efficient' },
-    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'google', description: 'Most capable Gemini' },
-    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', provider: 'google', description: 'Most capable Gemini' },
-    { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai', description: 'Most capable OpenAI' },
-    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai', description: 'Fast and affordable' },
-    { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'openai', description: 'Legacy model' },
+    // Free model (no API key needed)
+    { id: FREE_MODEL_ID, name: 'Auto', provider: 'openrouter', description: 'Uses best available free model', isFree: true },
+    // Paid models (require API key)
+    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', provider: 'google', description: 'Requires Google API key' },
+    { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai', description: 'Requires OpenAI API key' },
 ];
 
 interface UserProfile {
@@ -37,7 +39,7 @@ export default function ProfilePage() {
     const [user, setUser] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<TabType>('profile');
-    const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash');
+    const [selectedModel, setSelectedModel] = useState(FREE_MODEL_ID);
     const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
     const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
     const [saveMessage, setSaveMessage] = useState('');
@@ -157,8 +159,8 @@ export default function ProfilePage() {
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 p-6 overflow-y-auto">
-                <div className="max-w-xl">
+            <div className="flex-1 p-8 overflow-y-auto">
+                <div className="max-w-4xl mx-auto w-full">
                     {/* Profile Tab */}
                     {activeTab === 'profile' && (
                         <div className="space-y-4">
@@ -315,7 +317,25 @@ interface CustomModel {
     name: string;
     provider: string;
     apiKey: string;
+    apiEndpoint?: string;
 }
+
+// Provider presets for custom models
+const PROVIDER_PRESETS = [
+    { id: 'openrouter', name: 'OpenRouter', endpoint: 'https://openrouter.ai/api/v1' },
+    { id: 'google', name: 'Google Gemini', endpoint: 'https://generativelanguage.googleapis.com/v1beta' },
+    { id: 'anthropic', name: 'Anthropic Claude', endpoint: 'https://api.anthropic.com/v1' },
+    { id: 'openai', name: 'OpenAI', endpoint: 'https://api.openai.com/v1' },
+    { id: 'mistral', name: 'Mistral AI', endpoint: 'https://api.mistral.ai/v1' },
+    { id: 'groq', name: 'Groq', endpoint: 'https://api.groq.com/openai/v1' },
+    { id: 'custom', name: 'Custom / Local', endpoint: '' },
+];
+
+const LOCAL_PRESETS = [
+    { name: 'Ollama', endpoint: 'http://localhost:11434/v1' },
+    { name: 'vLLM', endpoint: 'http://localhost:8000/v1' },
+    { name: 'LM Studio', endpoint: 'http://localhost:5000/v1' },
+];
 
 // Models Tab Component
 function ModelsTab({ selectedModel, setSelectedModel }: { selectedModel: string; setSelectedModel: (m: string) => void }) {
@@ -329,24 +349,40 @@ function ModelsTab({ selectedModel, setSelectedModel }: { selectedModel: string;
         }
     });
     const [showAddForm, setShowAddForm] = useState(false);
-    const [newModel, setNewModel] = useState({ name: '', provider: '', apiKey: '' });
- 
+    const [selectedProvider, setSelectedProvider] = useState('openrouter');
+    const [newModel, setNewModel] = useState({
+        name: '',
+        modelId: '',
+        apiKey: '',
+        apiEndpoint: 'https://openrouter.ai/api/v1'
+    });
+
+    const handleProviderSelect = (providerId: string) => {
+        setSelectedProvider(providerId);
+        const preset = PROVIDER_PRESETS.find(p => p.id === providerId);
+        if (preset) {
+            setNewModel(prev => ({ ...prev, apiEndpoint: preset.endpoint }));
+        }
+    };
 
     const handleAddCustomModel = () => {
-        if (!newModel.name.trim() || !newModel.provider.trim()) return;
+        if (!newModel.modelId.trim()) return;
 
+        const provider = PROVIDER_PRESETS.find(p => p.id === selectedProvider);
         const customModel: CustomModel = {
-            id: `custom-${Date.now()}`,
-            name: newModel.name.trim(),
-            provider: newModel.provider.trim(),
+            id: newModel.modelId.trim(),
+            name: newModel.name.trim() || newModel.modelId.trim(),
+            provider: provider?.name || selectedProvider,
             apiKey: newModel.apiKey.trim(),
+            apiEndpoint: newModel.apiEndpoint.trim(),
         };
 
         const updated = [...customModels, customModel];
         setCustomModels(updated);
         localStorage.setItem('customModels', JSON.stringify(updated));
-        setNewModel({ name: '', provider: '', apiKey: '' });
+        setNewModel({ name: '', modelId: '', apiKey: '', apiEndpoint: 'https://openrouter.ai/api/v1' });
         setShowAddForm(false);
+        setSelectedProvider('openrouter');
     };
 
     const handleDeleteCustomModel = (id: string) => {
@@ -354,22 +390,26 @@ function ModelsTab({ selectedModel, setSelectedModel }: { selectedModel: string;
         setCustomModels(updated);
         localStorage.setItem('customModels', JSON.stringify(updated));
         if (selectedModel === id) {
-            setSelectedModel('gemini-2.0-flash');
-            localStorage.setItem('selectedModel', 'gemini-2.0-flash');
+            setSelectedModel(FREE_MODEL_ID);
+            localStorage.setItem('selectedModel', FREE_MODEL_ID);
         }
     };
 
-    const getProviderColor = (provider: string) => {
+    const getProviderColor = (provider: string, isFree?: boolean) => {
+        if (isFree) return 'bg-emerald-400';
         const lower = provider.toLowerCase();
+        if (lower.includes('openrouter')) return 'bg-purple-400';
         if (lower.includes('google') || lower.includes('gemini')) return 'bg-blue-400';
         if (lower.includes('openai') || lower.includes('gpt')) return 'bg-green-400';
         if (lower.includes('anthropic') || lower.includes('claude')) return 'bg-orange-400';
+        if (lower.includes('mistral')) return 'bg-red-400';
+        if (lower.includes('groq')) return 'bg-yellow-400';
         return 'bg-purple-400';
     };
 
-    const allModels: { id: string; name: string; provider: string; description: string; isCustom: boolean }[] = [
+    const allModels: { id: string; name: string; provider: string; description: string; isCustom: boolean; isFree?: boolean }[] = [
         ...AVAILABLE_MODELS.map(m => ({ ...m, isCustom: false })),
-        ...customModels.map(m => ({ id: m.id, name: m.name, provider: m.provider, description: `Custom - ${m.provider}`, isCustom: true }))
+        ...customModels.map(m => ({ id: m.id, name: m.name, provider: m.provider, description: `Custom - ${m.provider}`, isCustom: true, isFree: false }))
     ];
 
     return (
@@ -395,7 +435,7 @@ function ModelsTab({ selectedModel, setSelectedModel }: { selectedModel: string;
                                 }}
                                 className="flex items-center gap-3 flex-1"
                             >
-                                <span className={`w-2 h-2 rounded-full ${getProviderColor(model.provider)}`}></span>
+                                <span className={`w-2 h-2 rounded-full ${getProviderColor(model.provider, model.isFree)}`}></span>
                                 <div className="flex-1 text-left">
                                     <p className={`${isSelected ? 'font-semibold text-emerald-400' : 'font-medium text-neutral-300'}`}>
                                         {model.name}
@@ -432,45 +472,110 @@ function ModelsTab({ selectedModel, setSelectedModel }: { selectedModel: string;
                         Add Custom Model
                     </button>
                 ) : (
-                    <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 space-y-3">
-                        <h3 className="text-sm font-medium text-white">Add Custom Model</h3>
-                        <div className="space-y-2">
+                    <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 space-y-4">
+                        <h3 className="text-sm font-medium text-white">Add Model</h3>
+
+                        {/* Provider Selection */}
+                        <div>
+                            <label className="text-xs text-neutral-400 mb-2 block">PROVIDER</label>
+                            <div className="flex flex-wrap gap-2">
+                                {PROVIDER_PRESETS.map((provider) => (
+                                    <button
+                                        key={provider.id}
+                                        onClick={() => handleProviderSelect(provider.id)}
+                                        className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-all ${selectedProvider === provider.id
+                                            ? 'bg-emerald-500 text-white border-emerald-500'
+                                            : 'bg-[#0d0d0d] text-neutral-400 border-[#2a2a2a] hover:border-neutral-500'
+                                            }`}
+                                    >
+                                        {provider.name}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Custom API Endpoint (shown for custom/local) */}
+                        {selectedProvider === 'custom' && (
+                            <div>
+                                <label className="text-xs text-neutral-400 mb-2 block flex items-center gap-1">
+                                    <span className="text-emerald-400">⊕</span> CUSTOM API ENDPOINT
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="http://localhost:11434/v1"
+                                    value={newModel.apiEndpoint}
+                                    onChange={(e) => setNewModel({ ...newModel, apiEndpoint: e.target.value })}
+                                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500/50 mb-2"
+                                />
+                                <div className="flex flex-wrap gap-2">
+                                    {LOCAL_PRESETS.map((preset) => (
+                                        <button
+                                            key={preset.name}
+                                            onClick={() => setNewModel({ ...newModel, apiEndpoint: preset.endpoint })}
+                                            className="px-2 py-1 text-xs bg-[#0d0d0d] text-neutral-500 border border-[#2a2a2a] rounded hover:border-neutral-500 transition-colors"
+                                        >
+                                            {preset.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Model ID */}
+                        <div>
+                            <label className="text-xs text-neutral-400 mb-2 block">MODEL ID</label>
                             <input
                                 type="text"
-                                placeholder="Model name (e.g., claude-3-opus)"
+                                placeholder={selectedProvider === 'openrouter' ? 'e.g., anthropic/claude-3-opus' : 'e.g., gpt-4o, claude-3-opus'}
+                                value={newModel.modelId}
+                                onChange={(e) => setNewModel({ ...newModel, modelId: e.target.value })}
+                                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500/50"
+                            />
+                        </div>
+
+                        {/* Display Name (optional) */}
+                        <div>
+                            <label className="text-xs text-neutral-400 mb-2 block">DISPLAY NAME (optional)</label>
+                            <input
+                                type="text"
+                                placeholder="Friendly name for the model"
                                 value={newModel.name}
                                 onChange={(e) => setNewModel({ ...newModel, name: e.target.value })}
                                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500/50"
                             />
-                            <input
-                                type="text"
-                                placeholder="Provider (e.g., Anthropic, Mistral)"
-                                value={newModel.provider}
-                                onChange={(e) => setNewModel({ ...newModel, provider: e.target.value })}
-                                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500/50"
-                            />
+                        </div>
+
+                        {/* API Key */}
+                        <div>
+                            <label className="text-xs text-neutral-400 mb-2 block">API KEY</label>
                             <input
                                 type="password"
-                                placeholder="API Key (optional)"
+                                placeholder="Your API key"
                                 value={newModel.apiKey}
                                 onChange={(e) => setNewModel({ ...newModel, apiKey: e.target.value })}
                                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-emerald-500/50"
                             />
                         </div>
-                        <div className="flex gap-2">
+
+                        {/* Buttons */}
+                        <div className="flex gap-2 pt-2">
                             <button
                                 onClick={handleAddCustomModel}
-                                disabled={!newModel.name.trim() || !newModel.provider.trim()}
-                                className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded transition-colors"
+                                disabled={!newModel.modelId.trim()}
+                                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded transition-colors flex items-center gap-2"
                             >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
                                 Add Model
                             </button>
                             <button
                                 onClick={() => {
                                     setShowAddForm(false);
-                                    setNewModel({ name: '', provider: '', apiKey: '' });
+                                    setNewModel({ name: '', modelId: '', apiKey: '', apiEndpoint: 'https://openrouter.ai/api/v1' });
+                                    setSelectedProvider('openrouter');
                                 }}
-                                className="px-3 py-1.5 bg-neutral-700 hover:bg-neutral-600 text-white text-sm font-medium rounded transition-colors"
+                                className="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white text-sm font-medium rounded transition-colors"
                             >
                                 Cancel
                             </button>
@@ -481,3 +586,5 @@ function ModelsTab({ selectedModel, setSelectedModel }: { selectedModel: string;
         </div>
     );
 }
+
+

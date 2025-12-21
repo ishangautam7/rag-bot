@@ -2,7 +2,8 @@ import axios from 'axios';
 import type { AuthResponse, CreateSessionResponse, SendMessageResponse, Session, Message, UploadResponse } from './types';
 
 const api = axios.create({
-  baseURL: 'https://api.ishangautam7.com.np/api',
+  // baseURL: 'https://api.ishangautam7.com.np/api',
+  baseURL: 'http://localhost:4000/api',
 });
 
 api.interceptors.request.use((config) => {
@@ -37,8 +38,8 @@ export const resetPassword = (email: string, token: string, password: string) =>
 // Chat
 export const getSessions = () => api.get<Session[]>('/chat/sessions');
 
-export const createSession = (message: string) =>
-  api.post<CreateSessionResponse>('/chat/sessions', { message });
+export const createSession = (message: string, model?: string, apiKey?: string) =>
+  api.post<CreateSessionResponse>('/chat/sessions', { message, model, apiKey });
 
 export const sendMessage = (sessionId: string, content: string, model?: string, apiKey?: string) =>
   api.post<SendMessageResponse>('/chat/message', { sessionId, content, model, apiKey });
