@@ -31,12 +31,35 @@ export default function ChatPage() {
   // Get API key from localStorage based on model provider
   const getApiKey = () => {
     try {
+      // Check custom models first
+      const customModels = localStorage.getItem('customModels');
+      if (customModels) {
+        const customs = JSON.parse(customModels);
+        const custom = customs.find((c: any) => c.id === selectedModel);
+        if (custom?.apiKey) return custom.apiKey;
+      }
+      // Fall back to global keys
       const savedKeys = localStorage.getItem('modelApiKeys');
       if (!savedKeys) return undefined;
       const keys = JSON.parse(savedKeys);
       if (selectedModel.startsWith('gpt')) return keys.openai;
       if (selectedModel.startsWith('gemini')) return keys.google;
       return undefined; // Free models don't need API key
+    } catch {
+      return undefined;
+    }
+  };
+
+  // Get API endpoint for custom models
+  const getApiEndpoint = (): string | undefined => {
+    try {
+      const customModels = localStorage.getItem('customModels');
+      if (customModels) {
+        const customs = JSON.parse(customModels);
+        const custom = customs.find((c: any) => c.id === selectedModel);
+        if (custom?.apiEndpoint) return custom.apiEndpoint;
+      }
+      return undefined;
     } catch {
       return undefined;
     }
@@ -54,7 +77,8 @@ export default function ChatPage() {
     setLoading(true);
     try {
       const apiKey = getApiKey();
-      const res = await createSession(message, selectedModel, apiKey);
+      const apiEndpoint = getApiEndpoint();
+      const res = await createSession(message, selectedModel, apiKey, apiEndpoint);
       const data = res.data as any;
       const sessionId = data?.session?.id || data?.id;
       if (sessionId) {

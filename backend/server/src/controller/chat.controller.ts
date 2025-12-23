@@ -8,9 +8,9 @@ import FormData from 'form-data';
 export const createChat = async (req: AuthRequest, res: Response): Promise<any> => {
   try {
     const userId = req.user!;
-    const { message, model, apiKey } = req.body;
+    const { message, model, apiKey, apiEndpoint } = req.body;
 
-    const result = await chatService.createSession(userId, message, model, apiKey);
+    const result = await chatService.createSession(userId, message, model, apiKey, apiEndpoint);
     return res.status(201).json(result);
   } catch (error) {
     return res.status(500).json({ error: 'Failed to create session' });
@@ -32,13 +32,13 @@ export const getHistory = async (req: AuthRequest, res: Response): Promise<any> 
 export const sendMessage = async (req: AuthRequest, res: Response): Promise<any> => {
   try {
     const userId = req.user!;
-    const { sessionId, content, model, apiKey } = req.body;
+    const { sessionId, content, model, apiKey, apiEndpoint } = req.body;
 
     if (!sessionId || !content) {
       return res.status(400).json({ error: 'Session ID and Content are required' });
     }
 
-    const messages = await chatService.addMessage(sessionId, userId, content, model, apiKey);
+    const messages = await chatService.addMessage(sessionId, userId, content, model, apiKey, apiEndpoint);
     return res.json(messages);
   } catch (error: any) {
     return res.status(500).json({ error: error.message });
@@ -111,5 +111,42 @@ export const uploadFile = async (req: AuthRequest, res: Response): Promise<any> 
     return res.status(201).json({ userId, sessionId: sessionId || null, file: fileInfo });
   } catch (error) {
     return res.status(500).json({ error: 'File upload failed' });
+  }
+};
+
+// PATCH /api/chat/sessions/:id
+export const renameChat = async (req: AuthRequest, res: Response): Promise<any> => {
+  try {
+    const userId = req.user!;
+    const { id } = req.params;
+    const { title } = req.body;
+
+    if (!title || typeof title !== 'string') {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+
+    const session = await chatService.renameSession(id, userId, title);
+    return res.json(session);
+  } catch (error: any) {
+    if (error.message.includes('not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    return res.status(500).json({ error: 'Failed to rename session' });
+  }
+};
+
+// DELETE /api/chat/sessions/:id
+export const deleteChat = async (req: AuthRequest, res: Response): Promise<any> => {
+  try {
+    const userId = req.user!;
+    const { id } = req.params;
+
+    await chatService.deleteSession(id, userId);
+    return res.json({ success: true, message: 'Session deleted' });
+  } catch (error: any) {
+    if (error.message.includes('not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    return res.status(500).json({ error: 'Failed to delete session' });
   }
 };

@@ -29,7 +29,8 @@ model User {
   avatar    String?  
   isAdmin   Boolean  @default(false)
   
-  // Password reset
+  allowedModels String[] @default(["openrouter/auto"])
+  
   resetToken        String?
   resetTokenExpires DateTime?
   
@@ -39,12 +40,38 @@ model User {
   sessions       Session[]
   memberships    SessionMember[]
   sentMessages   Message[]
+  folders        Folder[]
+  activityLogs   ActivityLog[]
+  promptTemplates PromptTemplate[]
+  usageLogs      UsageLog[]
+}
+
+// Chat organization folders
+model Folder {
+  id        String    @id @default(uuid())
+  name      String
+  color     String    @default("#6b7280")
+  
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  sessions  Session[]
+  
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  
+  @@index([userId])
 }
 
 model Session {
   id        String    @id @default(uuid())
   title     String?   @default("New Chat") 
   status    ChatStatus @default(ACTIVE)
+  
+  // Pinning & Organization
+  isPinned  Boolean   @default(false)
+  folderId  String?
+  folder    Folder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
   
   // Sharing
   isPublic    Boolean   @default(false)
@@ -65,6 +92,7 @@ model Session {
   
   @@index([userId])
   @@index([shareToken])
+  @@index([folderId])
 }
 
 model SessionMember {
@@ -91,6 +119,17 @@ model Message {
   
   metadata  Json?    
   
+  // Thread support (reply to message)
+  parentId  String?
+  parent    Message?  @relation("MessageThread", fields: [parentId], references: [id], onDelete: SetNull)
+  replies   Message[] @relation("MessageThread")
+  
+  // RAG source citations
+  sources   Json?
+  
+  // Response time metrics (ms)
+  responseMs Int?
+  
   sessionId String
   session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   
@@ -102,6 +141,44 @@ model Message {
   
   @@index([sessionId])
   @@index([senderId])
+  @@index([parentId])
+}
+
+// User activity tracking
+model ActivityLog {
+  id        String   @id @default(uuid())
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  action    String   // LOGIN, LOGOUT, CREATE_CHAT, SEND_MESSAGE, DELETE_CHAT, etc.
+  details   Json?    // Additional context
+  ipAddress String?
+  userAgent String?
+  
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// Prompt templates
+model PromptTemplate {
+  id          String  @id @default(uuid())
+  name        String
+  prompt      String  @db.Text
+  category    String  @default("general")
+  description String?
+  
+  // null userId = system/default template
+  userId      String?
+  user        User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([userId])
+  @@index([category])
 }
 
 enum Role {
@@ -126,6 +203,7 @@ model UsageLog {
   id        String   @id @default(uuid())
   
   userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date      String   
   
   freeMessageCount Int @default(0)
@@ -136,4 +214,3 @@ model UsageLog {
   @@unique([userId, date])
   @@index([userId])
 }
-

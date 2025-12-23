@@ -39,7 +39,21 @@ router.use(protect);
 router.post('/sessions', chatController.createChat);      // Start new chat
 router.get('/sessions', chatController.getHistory);       // List old chats
 router.get('/sessions/:id', chatController.getMessages);  // Load specific chat
+router.patch('/sessions/:id', chatController.renameChat); // Rename chat
+router.delete('/sessions/:id', chatController.deleteChat); // Delete chat
 router.post('/message', chatController.sendMessage);      // Send message
+
+// Search
+import * as folderController from '../controller/folder.controller';
+router.get('/search', folderController.searchChats);        // Search chats/messages
+
+// Pin & Folder
+router.post('/sessions/:id/pin', folderController.togglePin);     // Pin/unpin chat
+router.post('/sessions/:id/folder', folderController.moveToFolder); // Move to folder
+
+// Export
+import * as templateController from '../controller/template.controller';
+router.get('/sessions/:id/export', templateController.exportChat); // Export chat
 
 // Share endpoints (protected)
 router.post('/sessions/:id/share', shareController.enableShare);    // Enable sharing

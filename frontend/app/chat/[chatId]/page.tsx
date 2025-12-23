@@ -97,7 +97,7 @@ export default function ChatPage() {
     setIsScrolled(element.scrollTop > 100);
   };
 
-  const handleSendMessage = async (content: string, _files?: File[], model?: string, apiKey?: string) => {
+  const handleSendMessage = async (content: string, _files?: File[], model?: string, apiKey?: string, apiEndpoint?: string) => {
     if (!chatId) return;
 
     // Don't send if no content (files are uploaded separately)
@@ -112,7 +112,7 @@ export default function ChatPage() {
     setMessages((prev) => [...prev, userMessage]);
     setLoading(true);
     try {
-      const res = await sendMessage(chatId, content, model, apiKey);
+      const res = await sendMessage(chatId, content, model, apiKey, apiEndpoint);
       const { userMessage: u, botMessage: b } = res.data as SendMessageResponse;
 
       // Track IDs to prevent duplicates from WebSocket
@@ -148,7 +148,7 @@ export default function ChatPage() {
             <span className="text-xs text-green-400 font-medium">Live</span>
           </div>
         )}
-        <ShareButton sessionId={chatId} />
+        {/* <ShareButton sessionId={chatId} /> */}
       </div>
 
       {/* Messages Container */}

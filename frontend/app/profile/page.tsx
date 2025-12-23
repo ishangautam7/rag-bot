@@ -378,6 +378,41 @@ export default function ProfilePage() {
                                     </button>
                                 </div>
                             </div>
+
+                            {/* Code Theme Selector */}
+                            <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+                                <p className="text-white text-sm mb-1">Code Syntax Theme</p>
+                                <p className="text-neutral-500 text-xs mb-3">Choose highlighting theme for code blocks</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {[
+                                        { id: 'vsDark', name: 'VS Dark', color: '#1E1E1E' },
+                                        { id: 'dracula', name: 'Dracula', color: '#282A36' },
+                                        { id: 'nightOwl', name: 'Night Owl', color: '#011627' },
+                                        { id: 'oceanicNext', name: 'Oceanic', color: '#1B2B34' },
+                                        { id: 'oneDark', name: 'One Dark', color: '#282C34' },
+                                        { id: 'github', name: 'GitHub', color: '#F6F8FA' },
+                                    ].map(t => {
+                                        const current = typeof window !== 'undefined' ? localStorage.getItem('codeTheme') : 'vsDark';
+                                        const isSelected = current === t.id || (!current && t.id === 'vsDark');
+                                        return (
+                                            <button
+                                                key={t.id}
+                                                onClick={() => {
+                                                    localStorage.setItem('codeTheme', t.id);
+                                                    window.location.reload();
+                                                }}
+                                                className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${isSelected
+                                                    ? 'border-emerald-500 bg-emerald-500/10'
+                                                    : 'border-[#333] hover:border-neutral-600'
+                                                    }`}
+                                            >
+                                                <div className="w-5 h-5 rounded" style={{ backgroundColor: t.color, border: t.id === 'github' ? '1px solid #333' : 'none' }} />
+                                                <span className="text-sm text-white">{t.name}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         </div>
                     )}
 

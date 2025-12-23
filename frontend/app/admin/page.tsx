@@ -2,8 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import api, { getProfile } from '@/app/lib/api';
-import { ArrowLeftIcon } from '@/app/components/Icons';
+import {
+    getProfile,
+    adminGetUsers,
+    adminGetUser,
+    adminResetUsage,
+    adminUpdateAllowedModels,
+    adminBroadcast,
+    adminGetModels,
+    AdminUser,
+    GrantableModel
+} from '@/app/lib/api';
+import { ArrowLeftIcon, ShieldIcon } from '@/app/components/Icons';
 
 interface UserProfile {
     id: string;
@@ -13,13 +23,11 @@ interface UserProfile {
     isAdmin?: boolean;
 }
 
+type TabType = 'overview' | 'users' | 'broadcast' | 'models' | 'activity' | 'metrics';
+
 export default function AdminPage() {
     const [user, setUser] = useState<UserProfile | null>(null);
-    const [subject, setSubject] = useState('');
-    const [content, setContent] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<{ message: string; recipients?: string[] } | null>(null);
-    const [error, setError] = useState('');
+    const [activeTab, setActiveTab] = useState<TabType>('overview');
     const [unauthorized, setUnauthorized] = useState(false);
     const router = useRouter();
 
@@ -29,8 +37,6 @@ export default function AdminPage() {
                 const res = await getProfile();
                 const userData = res.data as UserProfile;
                 setUser(userData);
-
-                // Check admin access
                 if (!userData.isAdmin) {
                     setUnauthorized(true);
                 }
@@ -41,52 +47,26 @@ export default function AdminPage() {
         fetchUser();
     }, [router]);
 
-    const handleSend = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-        setResult(null);
-
-        if (!subject.trim() || !content.trim()) {
-            setError('Subject and content are required');
-            return;
-        }
-
-        setLoading(true);
-        try {
-            const res = await api.post('/auth/admin/broadcast', { subject, content });
-            setResult(res.data);
-            setSubject('');
-            setContent('');
-        } catch (err: unknown) {
-            const error = err as { response?: { data?: { error?: string } } };
-            setError(error.response?.data?.error || 'Failed to send broadcast');
-        } finally {
-            setLoading(false);
-        }
-    };
-
     if (!user) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <p className="text-neutral-400">Loading...</p>
+            <div className="min-h-screen flex items-center justify-center bg-[#0d0d0d]">
+                <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
             </div>
         );
     }
 
     if (unauthorized) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)]">
+            <div className="min-h-screen flex items-center justify-center bg-[#0d0d0d]">
                 <div className="text-center">
                     <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-900/20 flex items-center justify-center">
-                        <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
+                        <ShieldIcon size={32} className="text-red-400" />
                     </div>
-                    <h2 className="text-xl font-semibold text-[var(--color-foreground)] mb-2">Access Denied</h2>
-                    <p className="text-[var(--color-accent)] mb-6">You don&apos;t have permission to access the admin panel.</p>
+                    <h2 className="text-xl font-semibold text-white mb-2">Access Denied</h2>
+                    <p className="text-neutral-400 mb-6">You don&apos;t have admin access.</p>
                     <button
                         onClick={() => router.push('/chat')}
-                        className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-medium rounded-lg transition-all"
+                        className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-all"
                     >
                         Back to Chat
                     </button>
@@ -95,81 +75,665 @@ export default function AdminPage() {
         );
     }
 
+    const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
+        { id: 'overview', label: 'Overview', icon: <ChartIcon /> },
+        { id: 'users', label: 'Users', icon: <UsersIcon /> },
+        { id: 'broadcast', label: 'Broadcast', icon: <MailIcon /> },
+        { id: 'models', label: 'Models', icon: <RobotIcon /> },
+        { id: 'activity', label: 'Activity', icon: <LogIcon /> },
+        { id: 'metrics', label: 'Metrics', icon: <ClockIcon /> },
+    ];
+
     return (
-        <div className="min-h-screen bg-[var(--color-background)] p-6">
-            <div className="max-w-2xl mx-auto">
-                {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-2xl font-semibold text-[var(--color-foreground)]">Admin Panel</h1>
-                    <p className="text-[var(--color-accent)]">Send broadcast emails to all users</p>
-                </div>
-
-                {/* Form */}
-                <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-6">
-                    <form onSubmit={handleSend} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-[var(--color-foreground)] mb-2">
-                                Subject
-                            </label>
-                            <input
-                                type="text"
-                                value={subject}
-                                onChange={(e) => setSubject(e.target.value)}
-                                placeholder="Email subject"
-                                className="w-full bg-[var(--color-input)] border border-[var(--color-border)] rounded-lg px-4 py-2.5 text-[var(--color-foreground)] placeholder-[var(--color-accent)] focus:outline-none focus:border-blue-500"
-                            />
+        <div className="min-h-screen bg-[#0d0d0d]">
+            {/* Header */}
+            <div className="border-b border-[#222] bg-[#141414]">
+                <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
+                            <ShieldIcon size={20} className="text-white" />
                         </div>
-
                         <div>
-                            <label className="block text-sm font-medium text-[var(--color-foreground)] mb-2">
-                                Content (HTML supported)
-                            </label>
-                            <textarea
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
-                                placeholder="<h1>Hello!</h1><p>Your message here...</p>"
-                                rows={6}
-                                className="w-full bg-[var(--color-input)] border border-[var(--color-border)] rounded-lg px-4 py-2.5 text-[var(--color-foreground)] placeholder-[var(--color-accent)] focus:outline-none focus:border-blue-500 resize-none"
-                            />
+                            <h1 className="text-lg font-semibold text-white">Admin Dashboard</h1>
+                            <p className="text-xs text-neutral-500">Manage users, settings & more</p>
                         </div>
-
-                        {error && (
-                            <div className="p-3 rounded-lg bg-red-900/20 border border-red-800/50">
-                                <p className="text-red-400 text-sm">{error}</p>
-                            </div>
-                        )}
-
-                        {result && (
-                            <div className="p-3 rounded-lg bg-green-900/20 border border-green-800/50">
-                                <p className="text-green-400 text-sm">{result.message}</p>
-                                {result.recipients && result.recipients.length > 0 && (
-                                    <p className="text-green-400/70 text-xs mt-1">
-                                        Recipients: {result.recipients.join(', ')}
-                                    </p>
-                                )}
-                            </div>
-                        )}
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-medium py-3 rounded-lg transition-all disabled:opacity-50"
-                        >
-                            {loading ? 'Sending...' : 'Send Broadcast Email'}
-                        </button>
-                    </form>
-                </div>
-
-                {/* Back Link */}
-                <div className="mt-6 text-center">
+                    </div>
                     <button
                         onClick={() => router.push('/chat')}
-                        className="text-[var(--color-accent)] hover:text-[var(--color-foreground)] transition-colors text-sm"
+                        className="flex items-center gap-2 px-4 py-2 text-neutral-400 hover:text-white transition-colors"
                     >
-                        <span className="inline-flex items-center gap-1"><ArrowLeftIcon size={14} /> Back to Chat</span>
+                        <ArrowLeftIcon size={16} />
+                        <span className="text-sm">Back to Chat</span>
+                    </button>
+                </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="border-b border-[#222] bg-[#141414]">
+                <div className="max-w-6xl mx-auto px-6">
+                    <div className="flex gap-1">
+                        {tabs.map((tab) => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
+                                    ? 'border-emerald-500 text-emerald-400'
+                                    : 'border-transparent text-neutral-400 hover:text-white'
+                                    }`}
+                            >
+                                {tab.icon}
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* Content */}
+            <div className="max-w-6xl mx-auto px-6 py-6">
+                {activeTab === 'overview' && <OverviewTab />}
+                {activeTab === 'users' && <UsersTab />}
+                {activeTab === 'broadcast' && <BroadcastTab />}
+                {activeTab === 'models' && <ModelsTab />}
+                {activeTab === 'activity' && <ActivityTab />}
+                {activeTab === 'metrics' && <MetricsTab />}
+            </div>
+        </div>
+    );
+}
+
+// ==================== OVERVIEW TAB ====================
+function OverviewTab() {
+    const [users, setUsers] = useState<AdminUser[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const res = await adminGetUsers();
+                setUsers(res.data);
+            } catch (e) {
+                console.error('Failed to load users:', e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        load();
+    }, []);
+
+    const totalUsers = users.length;
+    const admins = users.filter(u => u.isAdmin).length;
+    const activeToday = users.filter(u => u.todayUsage > 0).length;
+    const totalMessages = users.reduce((sum, u) => sum + (u._count?.sentMessages || 0), 0);
+    const totalSessions = users.reduce((sum, u) => sum + (u._count?.sessions || 0), 0);
+
+    if (loading) return <LoadingSpinner />;
+
+    return (
+        <div className="space-y-6">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard label="Total Users" value={totalUsers} icon={<UsersIcon />} color="emerald" />
+                <StatCard label="Active Today" value={activeToday} icon={<ActivityIcon />} color="blue" />
+                <StatCard label="Total Chats" value={totalSessions} icon={<ChatIcon />} color="purple" />
+                <StatCard label="Total Messages" value={totalMessages} icon={<MessageIcon />} color="orange" />
+            </div>
+
+            {/* Recent Users */}
+            <div className="bg-[#141414] border border-[#222] rounded-xl p-4">
+                <h3 className="text-sm font-medium text-white mb-4">Recent Users</h3>
+                <div className="space-y-2">
+                    {users.slice(0, 5).map((u) => (
+                        <div key={u.id} className="flex items-center justify-between py-2 border-b border-[#222] last:border-0">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center text-xs text-white">
+                                    {u.username?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
+                                </div>
+                                <div>
+                                    <p className="text-sm text-white">{u.username || u.email}</p>
+                                    <p className="text-xs text-neutral-500">{u.email}</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-sm text-neutral-300">{u._count?.sessions || 0} chats</p>
+                                <p className="text-xs text-neutral-500">Today: {u.todayUsage} msgs</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <QuickActionCard title="Export Users" description="Download user list as CSV" icon={<DownloadIcon />} onClick={() => exportUsersCSV(users)} />
+                <QuickActionCard title="Send Broadcast" description="Email all users" icon={<MailIcon />} />
+                <QuickActionCard title="View Logs" description="Check system activity" icon={<LogIcon />} />
+            </div>
+        </div>
+    );
+}
+
+// ==================== USERS TAB ====================
+function UsersTab() {
+    const [users, setUsers] = useState<AdminUser[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState('');
+    const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const res = await adminGetUsers();
+                setUsers(res.data);
+            } catch (e) {
+                console.error('Failed to load users:', e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        load();
+    }, []);
+
+    const filteredUsers = users.filter(u =>
+        u.email.toLowerCase().includes(search.toLowerCase()) ||
+        u.username?.toLowerCase().includes(search.toLowerCase())
+    );
+
+    const handleResetUsage = async (userId: string) => {
+        try {
+            await adminResetUsage(userId);
+            setUsers(prev => prev.map(u => u.id === userId ? { ...u, todayUsage: 0 } : u));
+            alert('Usage reset successfully!');
+        } catch (e) {
+            console.error('Failed to reset usage:', e);
+            alert('Failed to reset usage');
+        }
+    };
+
+    if (loading) return <LoadingSpinner />;
+
+    return (
+        <div className="space-y-4">
+            {/* Search */}
+            <div className="flex gap-4">
+                <input
+                    type="text"
+                    placeholder="Search users by email or username..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2.5 text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500"
+                />
+                <button
+                    onClick={() => exportUsersCSV(users)}
+                    className="px-4 py-2 bg-[#1a1a1a] border border-[#333] rounded-lg text-neutral-300 hover:bg-[#222] transition-colors flex items-center gap-2"
+                >
+                    <DownloadIcon /> Export CSV
+                </button>
+            </div>
+
+            {/* Users Table */}
+            <div className="bg-[#141414] border border-[#222] rounded-xl overflow-hidden">
+                <table className="w-full">
+                    <thead>
+                        <tr className="bg-[#1a1a1a] text-left text-xs text-neutral-400 uppercase">
+                            <th className="px-4 py-3">User</th>
+                            <th className="px-4 py-3">Role</th>
+                            <th className="px-4 py-3">Chats</th>
+                            <th className="px-4 py-3">Today Usage</th>
+                            <th className="px-4 py-3">Models</th>
+                            <th className="px-4 py-3">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filteredUsers.map((u) => (
+                            <tr key={u.id} className="border-t border-[#222] hover:bg-[#1a1a1a]">
+                                <td className="px-4 py-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center text-xs text-white">
+                                            {u.username?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-white">{u.username || 'No name'}</p>
+                                            <p className="text-xs text-neutral-500">{u.email}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                    {u.isAdmin ? (
+                                        <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs rounded-full">Admin</span>
+                                    ) : (
+                                        <span className="px-2 py-0.5 bg-neutral-700 text-neutral-300 text-xs rounded-full">User</span>
+                                    )}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-neutral-300">{u._count?.sessions || 0}</td>
+                                <td className="px-4 py-3">
+                                    <span className={`text-sm ${u.todayUsage >= 15 ? 'text-red-400' : 'text-neutral-300'}`}>
+                                        {u.todayUsage}/15
+                                    </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                    <span className="text-xs text-neutral-400">{u.allowedModels?.length || 1} models</span>
+                                </td>
+                                <td className="px-4 py-3">
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setSelectedUser(u)}
+                                            className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded hover:bg-emerald-500/30"
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            onClick={() => handleResetUsage(u.id)}
+                                            className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded hover:bg-blue-500/30"
+                                        >
+                                            Reset
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* User Detail Modal */}
+            {selectedUser && (
+                <UserDetailModal
+                    user={selectedUser}
+                    onClose={() => setSelectedUser(null)}
+                    onUpdate={(updated) => {
+                        setUsers(prev => prev.map(u => u.id === updated.id ? updated : u));
+                        setSelectedUser(null);
+                    }}
+                />
+            )}
+        </div>
+    );
+}
+
+// ==================== BROADCAST TAB ====================
+function BroadcastTab() {
+    const [subject, setSubject] = useState('');
+    const [content, setContent] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [result, setResult] = useState<{ message: string; sent: number } | null>(null);
+    const [error, setError] = useState('');
+
+    const handleSend = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!subject.trim() || !content.trim()) {
+            setError('Subject and content are required');
+            return;
+        }
+
+        setLoading(true);
+        setError('');
+        setResult(null);
+
+        try {
+            const res = await adminBroadcast(subject, content);
+            setResult(res.data);
+            setSubject('');
+            setContent('');
+        } catch (e: any) {
+            setError(e.response?.data?.error || 'Failed to send broadcast');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="max-w-2xl">
+            <div className="bg-[#141414] border border-[#222] rounded-xl p-6">
+                <h3 className="text-lg font-medium text-white mb-4">Send Broadcast Email</h3>
+                <form onSubmit={handleSend} className="space-y-4">
+                    <div>
+                        <label className="block text-sm text-neutral-400 mb-2">Subject</label>
+                        <input
+                            type="text"
+                            value={subject}
+                            onChange={(e) => setSubject(e.target.value)}
+                            placeholder="Email subject line"
+                            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2.5 text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm text-neutral-400 mb-2">Content (HTML supported)</label>
+                        <textarea
+                            value={content}
+                            onChange={(e) => setContent(e.target.value)}
+                            placeholder="<h1>Hello!</h1><p>Your message here...</p>"
+                            rows={8}
+                            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2.5 text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500 resize-none font-mono text-sm"
+                        />
+                    </div>
+
+                    {error && (
+                        <div className="p-3 bg-red-900/20 border border-red-800/50 rounded-lg">
+                            <p className="text-red-400 text-sm">{error}</p>
+                        </div>
+                    )}
+
+                    {result && (
+                        <div className="p-3 bg-emerald-900/20 border border-emerald-800/50 rounded-lg">
+                            <p className="text-emerald-400 text-sm">{result.message}</p>
+                            <p className="text-emerald-400/70 text-xs mt-1">Sent to {result.sent} users</p>
+                        </div>
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-medium py-3 rounded-lg transition-colors"
+                    >
+                        {loading ? 'Sending...' : 'Send Broadcast Email'}
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+// ==================== MODELS TAB ====================
+function ModelsTab() {
+    const [models, setModels] = useState<GrantableModel[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const res = await adminGetModels();
+                setModels(res.data);
+            } catch (e) {
+                console.error('Failed to load models:', e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        load();
+    }, []);
+
+    if (loading) return <LoadingSpinner />;
+
+    return (
+        <div className="space-y-4">
+            <div className="bg-[#141414] border border-[#222] rounded-xl p-4">
+                <h3 className="text-lg font-medium text-white mb-4">Available Free Models</h3>
+                <p className="text-sm text-neutral-400 mb-4">These models can be granted to users. All users have access to the default free model.</p>
+
+                <div className="grid gap-3">
+                    {models.map((model) => (
+                        <div key={model.id} className="flex items-center justify-between p-3 bg-[#1a1a1a] rounded-lg border border-[#333]">
+                            <div>
+                                <p className="text-sm font-medium text-white">{model.name}</p>
+                                <p className="text-xs text-neutral-500">{model.id}</p>
+                            </div>
+                            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded-full">Free</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ==================== ACTIVITY TAB ====================
+function ActivityTab() {
+    const [logs, setLogs] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState('');
+
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const { adminGetActivity } = await import('@/app/lib/api');
+                const res = await adminGetActivity({ limit: 100 });
+                setLogs(res.data.logs);
+            } catch (e) {
+                console.error('Failed to load activity:', e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        load();
+    }, []);
+
+    const filteredLogs = filter
+        ? logs.filter(l => l.action.toLowerCase().includes(filter.toLowerCase()))
+        : logs;
+
+    if (loading) return <LoadingSpinner />;
+
+    return (
+        <div className="space-y-4">
+            <input
+                type="text"
+                placeholder="Filter by action..."
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2.5 text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500"
+            />
+            <div className="bg-[#141414] border border-[#222] rounded-xl overflow-hidden">
+                <table className="w-full">
+                    <thead>
+                        <tr className="bg-[#1a1a1a] text-left text-xs text-neutral-400 uppercase">
+                            <th className="px-4 py-3">User</th>
+                            <th className="px-4 py-3">Action</th>
+                            <th className="px-4 py-3">Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filteredLogs.slice(0, 50).map((log) => (
+                            <tr key={log.id} className="border-t border-[#222] hover:bg-[#1a1a1a]">
+                                <td className="px-4 py-3 text-sm text-white">{log.user?.email?.split('@')[0] || 'Unknown'}</td>
+                                <td className="px-4 py-3"><span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full">{log.action}</span></td>
+                                <td className="px-4 py-3 text-sm text-neutral-400">{new Date(log.createdAt).toLocaleString()}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
+
+// ==================== METRICS TAB ====================
+function MetricsTab() {
+    const [metrics, setMetrics] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const { adminGetMetrics } = await import('@/app/lib/api');
+                const res = await adminGetMetrics(7);
+                setMetrics(res.data);
+            } catch (e) {
+                console.error('Failed to load metrics:', e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        load();
+    }, []);
+
+    if (loading) return <LoadingSpinner />;
+
+    return (
+        <div className="space-y-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-[#141414] border border-[#222] rounded-xl p-4">
+                    <p className="text-xs text-neutral-500 mb-1">Average</p>
+                    <p className="text-2xl font-bold text-white">{metrics?.avg || 0}ms</p>
+                </div>
+                <div className="bg-[#141414] border border-[#222] rounded-xl p-4">
+                    <p className="text-xs text-neutral-500 mb-1">P50</p>
+                    <p className="text-2xl font-bold text-white">{metrics?.p50 || 0}ms</p>
+                </div>
+                <div className="bg-[#141414] border border-[#222] rounded-xl p-4">
+                    <p className="text-xs text-neutral-500 mb-1">P95</p>
+                    <p className="text-2xl font-bold text-white">{metrics?.p95 || 0}ms</p>
+                </div>
+                <div className="bg-[#141414] border border-[#222] rounded-xl p-4">
+                    <p className="text-xs text-neutral-500 mb-1">Total</p>
+                    <p className="text-2xl font-bold text-white">{metrics?.count || 0}</p>
+                </div>
+            </div>
+            <div className="bg-[#141414] border border-[#222] rounded-xl p-4">
+                <h3 className="text-lg font-medium text-white mb-4">7-Day History</h3>
+                {(metrics?.history || []).map((day: any) => (
+                    <div key={day.date} className="flex items-center gap-3 py-1">
+                        <span className="text-xs text-neutral-400 w-20">{day.date}</span>
+                        <div className="flex-1 bg-[#222] rounded-full h-3">
+                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min((day.avg / 3000) * 100, 100)}%` }} />
+                        </div>
+                        <span className="text-xs text-white w-16 text-right">{day.avg}ms</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ==================== HELPER COMPONENTS ====================
+function UserDetailModal({ user, onClose, onUpdate }: { user: AdminUser; onClose: () => void; onUpdate: (user: AdminUser) => void }) {
+    const [models, setModels] = useState<GrantableModel[]>([]);
+    const [selectedModels, setSelectedModels] = useState<string[]>(user.allowedModels || ['openrouter/auto']);
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        adminGetModels().then(res => setModels(res.data)).catch(console.error);
+    }, []);
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            const res = await adminUpdateAllowedModels(user.id, selectedModels);
+            onUpdate(res.data.user);
+        } catch (e) {
+            console.error('Failed to update models:', e);
+            alert('Failed to update models');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const toggleModel = (modelId: string) => {
+        setSelectedModels(prev =>
+            prev.includes(modelId)
+                ? prev.filter(m => m !== modelId)
+                : [...prev, modelId]
+        );
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
+            <div className="bg-[#1a1a1a] border border-[#333] rounded-2xl p-6 max-w-md w-full m-4" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-lg font-semibold text-white mb-4">Edit User</h3>
+
+                <div className="mb-4">
+                    <p className="text-sm text-neutral-400">Email</p>
+                    <p className="text-white">{user.email}</p>
+                </div>
+
+                <div className="mb-4">
+                    <p className="text-sm text-neutral-400 mb-2">Allowed Models</p>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {models.map((model) => (
+                            <label key={model.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedModels.includes(model.id)}
+                                    onChange={() => toggleModel(model.id)}
+                                    className="w-4 h-4 rounded border-neutral-600 bg-neutral-800 text-emerald-500 focus:ring-emerald-500"
+                                />
+                                <span className="text-sm text-white">{model.name}</span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="flex gap-3">
+                    <button onClick={onClose} className="flex-1 py-2 border border-[#333] rounded-lg text-neutral-400 hover:bg-white/5">
+                        Cancel
+                    </button>
+                    <button onClick={handleSave} disabled={saving} className="flex-1 py-2 bg-emerald-500 rounded-lg text-white hover:bg-emerald-600 disabled:opacity-50">
+                        {saving ? 'Saving...' : 'Save'}
                     </button>
                 </div>
             </div>
         </div>
     );
 }
+
+function StatCard({ label, value, icon, color }: { label: string; value: number; icon: React.ReactNode; color: string }) {
+    const colors: Record<string, string> = {
+        emerald: 'from-emerald-500/20 to-emerald-600/10 border-emerald-500/30',
+        blue: 'from-blue-500/20 to-blue-600/10 border-blue-500/30',
+        purple: 'from-purple-500/20 to-purple-600/10 border-purple-500/30',
+        orange: 'from-orange-500/20 to-orange-600/10 border-orange-500/30',
+    };
+
+    return (
+        <div className={`bg-gradient-to-br ${colors[color]} border rounded-xl p-4`}>
+            <div className="flex items-center justify-between mb-2">
+                <span className="text-neutral-400">{icon}</span>
+            </div>
+            <p className="text-2xl font-bold text-white">{value.toLocaleString()}</p>
+            <p className="text-xs text-neutral-400">{label}</p>
+        </div>
+    );
+}
+
+function QuickActionCard({ title, description, icon, onClick }: { title: string; description: string; icon: React.ReactNode; onClick?: () => void }) {
+    return (
+        <button onClick={onClick} className="text-left bg-[#141414] border border-[#222] rounded-xl p-4 hover:border-emerald-500/30 transition-colors">
+            <div className="text-neutral-400 mb-2">{icon}</div>
+            <p className="text-sm font-medium text-white">{title}</p>
+            <p className="text-xs text-neutral-500">{description}</p>
+        </button>
+    );
+}
+
+function LoadingSpinner() {
+    return (
+        <div className="flex items-center justify-center py-12">
+            <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+    );
+}
+
+// Export CSV helper
+function exportUsersCSV(users: AdminUser[]) {
+    const headers = ['ID', 'Email', 'Username', 'Admin', 'Sessions', 'Messages', 'Today Usage', 'Created'];
+    const rows = users.map(u => [
+        u.id,
+        u.email,
+        u.username || '',
+        u.isAdmin ? 'Yes' : 'No',
+        u._count?.sessions || 0,
+        u._count?.sentMessages || 0,
+        u.todayUsage,
+        u.createdAt
+    ]);
+
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `users_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+}
+
+// Icons
+const ChartIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>;
+const UsersIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
+const MailIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
+const RobotIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>;
+const ActivityIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>;
+const ChatIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
+const MessageIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>;
+const DownloadIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>;
+const LogIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
+const ClockIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;

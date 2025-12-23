@@ -28,19 +28,16 @@ export function useSocket({ sessionId, isCollaborative = false, onNewMessage }: 
         socketRef.current = socket;
 
         socket.on('connect', () => {
-            console.log('Socket connected:', socket.id);
             setConnected(true);
             // Join the session room
             socket.emit('join-session', sessionId);
         });
 
         socket.on('disconnect', () => {
-            console.log('Socket disconnected');
             setConnected(false);
         });
 
         socket.on('new-message', (data: { sessionId: string; message: any }) => {
-            console.log('Received new message:', data);
             if (data.sessionId === sessionId && onNewMessage) {
                 onNewMessage(data.message);
             }

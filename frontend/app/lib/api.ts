@@ -2,8 +2,8 @@ import axios from 'axios';
 import type { AuthResponse, CreateSessionResponse, SendMessageResponse, Session, Message, UploadResponse } from './types';
 
 const api = axios.create({
-  // baseURL: 'https://api.ishangautam7.com.np/api',
-  baseURL: 'http://localhost:4000/api',
+  baseURL: 'https://api.ishangautam7.com.np/api',
+  // baseURL: 'http://localhost:4000/api',
 });
 
 api.interceptors.request.use((config) => {
@@ -38,11 +38,11 @@ export const resetPassword = (email: string, token: string, password: string) =>
 // Chat
 export const getSessions = () => api.get<Session[]>('/chat/sessions');
 
-export const createSession = (message: string, model?: string, apiKey?: string) =>
-  api.post<CreateSessionResponse>('/chat/sessions', { message, model, apiKey });
+export const createSession = (message: string, model?: string, apiKey?: string, apiEndpoint?: string) =>
+  api.post<CreateSessionResponse>('/chat/sessions', { message, model, apiKey, apiEndpoint });
 
-export const sendMessage = (sessionId: string, content: string, model?: string, apiKey?: string) =>
-  api.post<SendMessageResponse>('/chat/message', { sessionId, content, model, apiKey });
+export const sendMessage = (sessionId: string, content: string, model?: string, apiKey?: string, apiEndpoint?: string) =>
+  api.post<SendMessageResponse>('/chat/message', { sessionId, content, model, apiKey, apiEndpoint });
 
 export const getMessages = (sessionId: string) => api.get<Message[]>(`/chat/sessions/${sessionId}`);
 
@@ -121,6 +121,140 @@ export const checkOwner = (sessionId: string) =>
 export const getUsage = () =>
   api.get<{ remaining: number; limit: number; used: number }>('/usage');
 
+// Session management
+export const renameSession = (sessionId: string, title: string) =>
+  api.patch<Session>(`/chat/sessions/${sessionId}`, { title });
+
+// Admin APIs
+export interface AdminUser {
+  id: string;
+  email: string;
+  username: string | null;
+  avatar: string | null;
+  isAdmin: boolean;
+  allowedModels: string[];
+  createdAt: string;
+  todayUsage: number;
+  _count: { sessions: number; sentMessages: number };
+}
+
+export interface GrantableModel {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export const adminGetUsers = () =>
+  api.get<AdminUser[]>('/admin/users');
+
+export const adminGetUser = (userId: string) =>
+  api.get<AdminUser>(`/admin/users/${userId}`);
+
+export const adminResetUsage = (userId: string) =>
+  api.post<{ message: string }>(`/admin/users/${userId}/reset-usage`);
+
+export const adminUpdateAllowedModels = (userId: string, models: string[]) =>
+  api.post<{ message: string; user: AdminUser }>(`/admin/users/${userId}/allowed-models`, { models });
+
+export const adminBroadcast = (subject: string, content: string, userIds?: string[]) =>
+  api.post<{ message: string; sent: number; recipients?: string[] }>('/admin/broadcast', { subject, content, userIds });
+
+export const adminGetModels = () =>
+  api.get<GrantableModel[]>('/admin/models');
+
+// Folders
+export interface Folder {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: string;
+  _count?: { sessions: number };
+}
+
+export const getFolders = () =>
+  api.get<Folder[]>('/folders');
+
+export const createFolder = (name: string, color?: string) =>
+  api.post<Folder>('/folders', { name, color });
+
+export const updateFolder = (folderId: string, data: { name?: string; color?: string }) =>
+  api.patch<Folder>(`/folders/${folderId}`, data);
+
+export const deleteFolder = (folderId: string) =>
+  api.delete(`/folders/${folderId}`);
+
+export const moveToFolder = (sessionId: string, folderId: string | null) =>
+  api.post<{ folderId: string | null }>(`/chat/sessions/${sessionId}/folder`, { folderId });
+
+// Pin
+export const togglePin = (sessionId: string) =>
+  api.post<{ isPinned: boolean }>(`/chat/sessions/${sessionId}/pin`);
+
+// Search
+export interface SearchResult {
+  sessions: Session[];
+  messages: Array<{
+    id: string;
+    content: string;
+    role: string;
+    createdAt: string;
+    session: { id: string; title: string };
+  }>;
+}
+
+export const searchChats = (query: string) =>
+  api.get<SearchResult>(`/chat/search?q=${encodeURIComponent(query)}`);
+
+// Export
+export const exportChat = (sessionId: string, format: 'json' | 'md' | 'txt') =>
+  api.get<Blob>(`/chat/sessions/${sessionId}/export?format=${format}`, { responseType: 'blob' });
+
+// Templates
+export interface PromptTemplate {
+  id: string;
+  name: string;
+  prompt: string;
+  category: string;
+  description?: string;
+  userId?: string;
+}
+
+export const getTemplates = () =>
+  api.get<PromptTemplate[]>('/templates');
+
+export const createTemplate = (data: { name: string; prompt: string; category?: string; description?: string }) =>
+  api.post<PromptTemplate>('/templates', data);
+
+export const deleteTemplate = (templateId: string) =>
+  api.delete(`/templates/${templateId}`);
+
+// Delete session (using existing route - just alias for clarity)
+export const deleteSession = (sessionId: string) =>
+  api.delete(`/chat/sessions/${sessionId}`);
+
+// Activity & Metrics (Admin)
+export interface ActivityLog {
+  id: string;
+  action: string;
+  details?: any;
+  ipAddress?: string;
+  createdAt: string;
+  user: { id: string; email: string; username: string | null };
+}
+
+export interface ResponseMetrics {
+  avg: number;
+  p50: number;
+  p95: number;
+  p99: number;
+  count: number;
+  history: Array<{ date: string; avg: number; count: number }>;
+}
+
+export const adminGetActivity = (params?: { userId?: string; action?: string; limit?: number }) =>
+  api.get<{ logs: ActivityLog[]; total: number }>('/admin/activity', { params });
+
+export const adminGetMetrics = (days?: number) =>
+  api.get<ResponseMetrics>('/admin/metrics', { params: { days } });
+
 export default api;
-
-

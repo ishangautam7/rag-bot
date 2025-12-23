@@ -83,6 +83,7 @@ class ChatRequest(BaseModel):
     message: str
     model: str = DEFAULT_FREE_MODEL
     api_key: str | None = None
+    api_endpoint: str | None = None 
 
 class ChatResponse(BaseModel):
     response: str
@@ -133,16 +134,37 @@ def is_free_model(model_name: str) -> bool:
     """Check if model is a free OpenRouter model"""
     return model_name in FREE_MODELS or model_name.endswith(":free")
 
-def get_retrieved_context(query: str) -> str:
-    """Get relevant context from vector store"""
+def get_retrieved_context(query: str, session_id: str = None) -> str:
+    """Get relevant context from vector store for a specific session"""
     try:
-        docs = retriever.invoke(query)
+        # If session_id provided, filter by it
+        if session_id:
+            docs = vectorstore.similarity_search(
+                query,
+                k=4,
+                filter={"session_id": session_id}
+            )
+        else:
+            docs = retriever.invoke(query)
+        
         if docs:
             return "\n\n---\n\n".join([doc.page_content for doc in docs])
         return ""
     except Exception as e:
         print(f"Retrieval error: {e}")
         return ""
+
+def session_has_documents(session_id: str) -> bool:
+    """Check if a session has any uploaded documents"""
+    try:
+        docs = vectorstore.similarity_search(
+            "test",
+            k=1,
+            filter={"session_id": session_id}
+        )
+        return len(docs) > 0
+    except:
+        return False
 
 async def call_openrouter(model: str, messages: list, api_key: str) -> str:
     """Call OpenRouter API directly with httpx"""
@@ -221,6 +243,39 @@ async def call_openai(model: str, messages: list, api_key: str) -> str:
         data = response.json()
         return data["choices"][0]["message"]["content"]
 
+async def call_custom_endpoint(endpoint: str, model: str, messages: list, api_key: str = None) -> str:
+    """Call custom OpenAI-compatible endpoint (Ollama, vLLM, LM Studio)"""
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    
+    # Ensure endpoint ends with /chat/completions
+    if not endpoint.endswith('/chat/completions'):
+        endpoint = endpoint.rstrip('/') + '/chat/completions'
+    
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        try:
+            response = await client.post(
+                endpoint,
+                headers=headers,
+                json={
+                    "model": model,
+                    "messages": messages,
+                    "temperature": 0.7,
+                }
+            )
+            
+            if response.status_code != 200:
+                error_text = response.text
+                raise Exception(f"Custom endpoint error: {response.status_code} - {error_text}")
+            
+            data = response.json()
+            return data["choices"][0]["message"]["content"]
+        except httpx.ConnectError:
+            raise Exception(f"Could not connect to {endpoint}. Make sure the local server is running.")
+        except Exception as e:
+            raise Exception(f"Custom endpoint error: {str(e)}")
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
     """Handles chat interaction with history from Postgres."""
@@ -240,15 +295,22 @@ async def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
     model_name = request.model or DEFAULT_FREE_MODEL
     
     try:
-        # Get context from vector store
-        context = get_retrieved_context(request.message)
+        # Check if session has documents attached - only use RAG if documents exist
+        has_docs = session_has_documents(request.session_id)
         
-        # Build system message with context
-        system_message = """You are a helpful AI assistant. Use the following context to answer the user's question.
+        if has_docs:
+            # Get context from vector store (filtered by session)
+            context = get_retrieved_context(request.message, request.session_id)
+            
+            # Build system message with context
+            system_message = """You are a helpful AI assistant. Use the following context from uploaded documents to answer the user's question.
 If the answer is not in the context, use your general knowledge but mention that.
 
 Context:
 """ + (context if context else "No specific context available.")
+        else:
+            # No documents - use general AI assistant prompt
+            system_message = "You are a helpful AI assistant. Answer the user's questions to the best of your ability."
         
         # Prepare messages with system prompt
         api_messages = [{"role": "system", "content": system_message}]
@@ -256,7 +318,12 @@ Context:
         api_messages.append({"role": "user", "content": request.message})
         
         # Call appropriate API
-        if is_free_model(model_name):
+        # Custom endpoint takes priority (for local models like Ollama)
+        if request.api_endpoint:
+            ai_response_text = await call_custom_endpoint(
+                request.api_endpoint, model_name, api_messages, request.api_key
+            )
+        elif is_free_model(model_name):
             ai_response_text = await call_openrouter(model_name, api_messages, OPENROUTER_API_KEY)
         elif model_name.startswith("gpt"):
             if not request.api_key:

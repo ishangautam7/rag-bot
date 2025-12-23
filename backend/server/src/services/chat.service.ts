@@ -2,11 +2,13 @@ import { prisma } from '../db';
 import { emitNewMessage } from './socket.service';
 import { isFreeModel, canSendFreeMessage, incrementFreeMessageCount } from './usage.service';
 
-export const createSession = async (userId: string, firstMessage?: string, model?: string, apiKey?: string) => {
+export const createSession = async (userId: string, firstMessage?: string, model?: string, apiKey?: string, apiEndpoint?: string) => {
   const session = await prisma.session.create({
     data: {
       userId,
-      title: firstMessage ? firstMessage.substring(0, 30) + '...' : 'New Chat',
+      title: firstMessage
+        ? (firstMessage.length > 30 ? firstMessage.substring(0, 30) + '...' : firstMessage)
+        : 'New Chat',
     },
   });
 
@@ -32,6 +34,7 @@ export const createSession = async (userId: string, firstMessage?: string, model
 
       if (model) ragPayload.model = model;
       if (apiKey) ragPayload.api_key = apiKey;
+      if (apiEndpoint) ragPayload.api_endpoint = apiEndpoint;
 
       const ragResponse = await fetch('http://localhost:8000/chat', {
         method: 'POST',
@@ -130,7 +133,8 @@ export const addMessage = async (
   userId: string,
   content: string,
   model?: string,
-  apiKey?: string
+  apiKey?: string,
+  apiEndpoint?: string
 ) => {
   const session = await canAccessSession(sessionId, userId);
 
@@ -166,6 +170,8 @@ export const addMessage = async (
 
     if (model) ragPayload.model = model;
     if (apiKey) ragPayload.api_key = apiKey;
+    if (apiEndpoint) ragPayload.api_endpoint = apiEndpoint;
+
 
     const ragResponse = await fetch('http://localhost:8000/chat', {
       method: 'POST',
@@ -220,5 +226,53 @@ export const getSessionMessages = async (sessionId: string, userId: string) => {
         }
       }
     }
+  });
+};
+
+/**
+ * Rename a session (only owner can rename)
+ */
+export const renameSession = async (sessionId: string, userId: string, title: string) => {
+  // Only owner can rename
+  const session = await prisma.session.findFirst({
+    where: { id: sessionId, userId }
+  });
+
+  if (!session) {
+    throw new Error('Session not found or access denied');
+  }
+
+  return prisma.session.update({
+    where: { id: sessionId },
+    data: { title: title.trim() || 'Untitled' }
+  });
+};
+
+/**
+ * Delete a session (only owner can delete)
+ */
+export const deleteSession = async (sessionId: string, userId: string) => {
+  // Only owner can delete
+  const session = await prisma.session.findFirst({
+    where: { id: sessionId, userId }
+  });
+
+  if (!session) {
+    throw new Error('Session not found or access denied');
+  }
+
+  // Delete all messages first
+  await prisma.message.deleteMany({
+    where: { sessionId }
+  });
+
+  // Delete session members
+  await prisma.sessionMember.deleteMany({
+    where: { sessionId }
+  });
+
+  // Delete the session
+  return prisma.session.delete({
+    where: { id: sessionId }
   });
 };

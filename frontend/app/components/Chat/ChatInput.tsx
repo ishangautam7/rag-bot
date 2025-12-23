@@ -7,7 +7,7 @@ import { PaperclipIcon } from '@/app/components/Icons';
 import { useFreeMessageLimit } from '@/app/hooks/useFreeMessageLimit';
 
 interface ChatInputProps {
-  onSendMessage: (message: string, files?: File[], model?: string, apiKey?: string) => void;
+  onSendMessage: (message: string, files?: File[], model?: string, apiKey?: string, apiEndpoint?: string) => void;
   disabled?: boolean;
   sessionId?: string;
 }
@@ -35,11 +35,36 @@ export default function ChatInput({ onSendMessage, disabled = false, sessionId }
   }, [message]);
 
   const getApiKeyForModel = (model: string): string | undefined => {
+    // Check custom models first
+    const customModels = localStorage.getItem('customModels');
+    if (customModels) {
+      const customs = JSON.parse(customModels);
+      const custom = customs.find((c: any) => c.id === model);
+      if (custom?.apiKey) return custom.apiKey;
+    }
+    // Fall back to global keys
     const savedKeys = localStorage.getItem('modelApiKeys');
     if (!savedKeys) return undefined;
     const keys = JSON.parse(savedKeys);
     if (model.startsWith('gpt')) return keys.openai;
     return keys.google;
+  };
+
+  const getApiEndpointForModel = (model: string): string | undefined => {
+    const customModels = localStorage.getItem('customModels');
+    console.log('[DEBUG] Looking for model:', model);
+    console.log('[DEBUG] Custom models in storage:', customModels);
+    if (customModels) {
+      const customs = JSON.parse(customModels);
+      const custom = customs.find((c: any) => c.id === model);
+      console.log('[DEBUG] Found custom model:', custom);
+      if (custom?.apiEndpoint) {
+        console.log('[DEBUG] Returning endpoint:', custom.apiEndpoint);
+        return custom.apiEndpoint;
+      }
+    }
+    console.log('[DEBUG] No endpoint found for model');
+    return undefined;
   };
 
   const handleFileSelect = async (selectedFiles: FileList | null) => {
@@ -91,7 +116,8 @@ export default function ChatInput({ onSendMessage, disabled = false, sessionId }
       }
 
       const apiKey = getApiKeyForModel(selectedModel);
-      onSendMessage(message, files, selectedModel, apiKey);
+      const apiEndpoint = getApiEndpointForModel(selectedModel);
+      onSendMessage(message, files, selectedModel, apiKey, apiEndpoint);
 
       // Refresh usage after sending
       if (isFreeModel(selectedModel)) {
