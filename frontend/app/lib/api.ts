@@ -2,8 +2,8 @@ import axios from 'axios';
 import type { AuthResponse, CreateSessionResponse, SendMessageResponse, Session, Message, UploadResponse } from './types';
 
 const api = axios.create({
-  baseURL: 'https://api.ishangautam7.com.np/api',
-  // baseURL: 'http://localhost:4000/api',
+  // baseURL: 'https://api.ishangautam7.com.np/api',
+  baseURL: 'http://localhost:4000/api',
 });
 
 api.interceptors.request.use((config) => {

@@ -1,57 +1,102 @@
 'use client';
 
 import Link from 'next/link';
-import { Button } from './Button';
-import { Bot, Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
+    const [theme, setTheme] = useState<'light' | 'dark'>('light');
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+        try {
+            const saved = localStorage.getItem('theme');
+            const next = (saved === 'dark' || saved === 'light') ? (saved as 'light' | 'dark') : 'light';
+            setTheme(next);
+            document.documentElement.classList.toggle('dark', next === 'dark');
+        } catch {
+            document.documentElement.classList.toggle('dark', false);
+        }
+    }, []);
+
+    const toggleTheme = () => {
+        const next = theme === 'dark' ? 'light' : 'dark';
+        setTheme(next);
+        try {
+            localStorage.setItem('theme', next);
+        } catch { /* noop */ }
+    };
 
     return (
-        <nav className="fixed top-0 left-0 right-0 z-50 bg-neutral-950/80 backdrop-blur-md border-b border-neutral-800">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--color-card)] border-b border-[var(--color-border)]">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6">
                 <div className="flex items-center justify-between h-16">
                     {/* Logo */}
-                    <Link href="/" className="flex items-center space-x-2 group">
-                        <div className="p-2 bg-neutral-800 rounded-lg group-hover:bg-neutral-700 transition-colors">
-                            <Bot className="w-5 h-5 text-neutral-300" />
+                    <Link href="/" className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-[var(--color-primary)] flex items-center justify-center">
+                            <svg className="w-4 h-4 text-[var(--color-primary-foreground)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                                <path d="M2 17l10 5 10-5" />
+                                <path d="M2 12l10 5 10-5" />
+                            </svg>
                         </div>
-                        <span className="text-lg font-semibold text-neutral-100">
-                            Nexus<span className="text-neutral-400">AI</span>
-                        </span>
+                        <span className="font-semibold text-[var(--color-foreground)]">NexusAI</span>
                     </Link>
 
-                    {/* Desktop Navigation */}
-                    <div className="hidden md:flex items-center space-x-6">
-                        <Link href="/" className="text-sm text-neutral-400 hover:text-neutral-100 transition-colors">
-                            Features
-                        </Link>
-                        <Link href="/chat" className="text-sm text-neutral-400 hover:text-neutral-100 transition-colors">
-                            Chat
-                        </Link>
-                        <Link href="#" className="text-sm text-neutral-400 hover:text-neutral-100 transition-colors">
-                            Pricing
-                        </Link>
-                    </div>
-
-                    {/* CTA Buttons */}
-                    <div className="hidden md:flex items-center space-x-3">
+                    {/* Desktop Navigation (Chat removed) */}
+                    <div className="hidden md:flex items-center gap-3">
+                        <button
+                            onClick={toggleTheme}
+                            aria-label="Toggle theme"
+                            className="px-3 py-2 rounded-lg border border-[var(--color-border)] text-[var(--color-foreground)] hover:bg-[var(--color-secondary)] transition-colors text-sm"
+                        >
+                            <span suppressHydrationWarning>
+                                {mounted ? (theme === 'dark' ? 'Light' : 'Dark') : 'Theme'}
+                            </span>
+                        </button>
                         <Link href="/login">
-                            <Button variant="ghost" size="sm">Sign In</Button>
+                            <button className="px-4 py-2 text-sm text-[var(--color-foreground)] hover:bg-[var(--color-secondary)] rounded-lg transition-colors">
+                                Sign In
+                            </button>
                         </Link>
-                        <Link href="/chat">
-                            <Button size="sm" variant="primary">Get Started</Button>
+                        <Link href="/signup">
+                            <button className="px-4 py-2 text-sm bg-[var(--color-primary)] text-[var(--color-primary-foreground)] rounded-lg font-medium hover:bg-[var(--color-primary-dark)] transition-colors">
+                                Get Started
+                            </button>
                         </Link>
                     </div>
 
                     {/* Mobile Menu Button */}
-                    <div className="md:hidden">
+                    <div className="md:hidden flex items-center gap-2">
+                        <button
+                            onClick={toggleTheme}
+                            aria-label="Toggle theme"
+                            className="p-2 rounded-lg border border-[var(--color-border)] text-[var(--color-foreground)] hover:bg-[var(--color-secondary)] transition-colors"
+                        >
+                            {theme === 'dark' ? (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                            ) : (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                                </svg>
+                            )}
+                        </button>
                         <button
                             onClick={() => setIsOpen(!isOpen)}
-                            className="p-2 rounded-lg text-neutral-400 hover:bg-neutral-800 transition-colors"
+                            className="p-2 rounded-lg text-[var(--color-foreground-muted)] hover:bg-[var(--color-secondary)] transition-colors"
                         >
-                            {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                            {isOpen ? (
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            ) : (
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                                </svg>
+                            )}
                         </button>
                     </div>
                 </div>
@@ -59,23 +104,17 @@ export const Navbar = () => {
 
             {/* Mobile Menu */}
             {isOpen && (
-                <div className="md:hidden bg-neutral-900 border-t border-neutral-800">
-                    <div className="px-4 py-4 space-y-2">
-                        <Link href="/" className="block px-3 py-2 rounded-lg text-neutral-300 hover:bg-neutral-800 transition-colors">
-                            Features
-                        </Link>
-                        <Link href="/chat" className="block px-3 py-2 rounded-lg text-neutral-300 hover:bg-neutral-800 transition-colors">
-                            Chat
-                        </Link>
-                        <Link href="#" className="block px-3 py-2 rounded-lg text-neutral-300 hover:bg-neutral-800 transition-colors">
-                            Pricing
-                        </Link>
-                        <div className="pt-3 space-y-2 border-t border-neutral-800">
-                            <Link href="/login" className="block">
-                                <Button variant="ghost" className="w-full justify-center">Sign In</Button>
+                <div className="md:hidden bg-[var(--color-card)] border-t border-[var(--color-border)]">
+                    <div className="px-4 py-3 space-y-1">
+                        {/* Chat link removed */}
+                        <div className="pt-3 space-y-2 border-t border-[var(--color-border)]">
+                            <Link href="/login" className="block" onClick={() => setIsOpen(false)}>
+                                <button className="w-full text-left px-3 py-2 text-sm text-[var(--color-foreground)] hover:bg-[var(--color-secondary)] rounded-lg">Sign In</button>
                             </Link>
-                            <Link href="/chat" className="block">
-                                <Button variant="primary" className="w-full">Get Started</Button>
+                            <Link href="/signup" className="block" onClick={() => setIsOpen(false)}>
+                                <button className="w-full px-3 py-2 text-sm bg-[var(--color-primary)] text-[var(--color-primary-foreground)] rounded-lg font-medium hover:bg-[var(--color-primary-dark)]">
+                                    Get Started
+                                </button>
                             </Link>
                         </div>
                     </div>

@@ -11,13 +11,13 @@ interface SettingsModalProps {
 export default function SettingsModal({ isOpen, onClose, onLogout }: SettingsModalProps) {
     const [activeTab, setActiveTab] = useState<'general' | 'account'>('general');
     const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-        if (typeof window === 'undefined') return 'dark';
+        if (typeof window === 'undefined') return 'light';
         const saved = localStorage.getItem('theme') as 'dark' | 'light' | null;
-        return saved || 'dark';
+        return saved || 'light';
     });
 
     useEffect(() => {
-        document.documentElement.classList.toggle('light', theme === 'light');
+        document.documentElement.classList.toggle('dark', theme === 'dark');
     }, [theme]);
 
     const toggleTheme = () => {

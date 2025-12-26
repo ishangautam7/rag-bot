@@ -16,7 +16,6 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
 
   const validateEmail = (email: string) => {
@@ -84,25 +83,27 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-neutral-800 border border-neutral-700 mb-4">
-            <svg className="w-7 h-7 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-            </svg>
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-[var(--color-background)]">
+      <div className="w-full max-w-sm">
+        {/* Card */}
+        <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl p-6 shadow-sm">
+          {/* Header */}
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--color-secondary)] border border-[var(--color-border)] mb-4">
+              <svg className="w-6 h-6 text-[var(--color-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                <path d="M2 17l10 5 10-5" />
+                <path d="M2 12l10 5 10-5" />
+              </svg>
+            </div>
+            <h1 className="text-xl font-semibold text-[var(--color-foreground)] mb-1">Create account</h1>
+            <p className="text-sm text-[var(--color-foreground-muted)]">Sign up to get started.</p>
           </div>
-          <h1 className="text-2xl font-semibold text-neutral-100 mb-1">Create account</h1>
-          <p className="text-neutral-500">Sign up to get started</p>
-        </div>
 
-        {/* Form */}
-        <div className="card-modern">
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-neutral-400 mb-2">
+              <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
                 Full Name
               </label>
               <input
@@ -111,15 +112,15 @@ export default function SignupPage() {
                 value={formData.name}
                 onChange={handleInputChange}
                 placeholder="John Doe"
-                className="input-modern"
+                className="w-full bg-[var(--color-input)] border border-[var(--color-input-border)] rounded-lg py-2.5 px-3 text-sm text-[var(--color-foreground)] placeholder-[var(--color-foreground-muted)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/10 transition-all"
                 required
               />
             </div>
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-neutral-400 mb-2">
-                Email
+              <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
+                Email Address
               </label>
               <input
                 type="email"
@@ -127,14 +128,14 @@ export default function SignupPage() {
                 value={formData.email}
                 onChange={handleInputChange}
                 placeholder="you@example.com"
-                className="input-modern"
+                className="w-full bg-[var(--color-input)] border border-[var(--color-input-border)] rounded-lg py-2.5 px-3 text-sm text-[var(--color-foreground)] placeholder-[var(--color-foreground-muted)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/10 transition-all"
                 required
               />
             </div>
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-neutral-400 mb-2">
+              <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
                 Password
               </label>
               <div className="relative">
@@ -143,67 +144,43 @@ export default function SignupPage() {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  placeholder="••••••••"
-                  className="input-modern pr-10"
+                  placeholder="Min. 8 characters"
+                  className="w-full bg-[var(--color-input)] border border-[var(--color-input-border)] rounded-lg py-2.5 px-3 pr-10 text-sm text-[var(--color-foreground)] placeholder-[var(--color-foreground-muted)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/10 transition-all"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)] transition-colors"
                 >
-                  {showPassword ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-4.803m5.596-3.856a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
                 </button>
               </div>
             </div>
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-sm font-medium text-neutral-400 mb-2">
+              <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
                 Confirm Password
               </label>
-              <div className="relative">
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  placeholder="••••••••"
-                  className="input-modern pr-10"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors"
-                >
-                  {showConfirmPassword ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-4.803m5.596-3.856a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
+              <input
+                type="password"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleInputChange}
+                placeholder="Confirm your password"
+                className="w-full bg-[var(--color-input)] border border-[var(--color-input-border)] rounded-lg py-2.5 px-3 text-sm text-[var(--color-foreground)] placeholder-[var(--color-foreground-muted)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/10 transition-all"
+                required
+              />
             </div>
 
             {/* Error */}
             {error && (
-              <div className="p-3 rounded-lg bg-red-900/20 border border-red-800/50">
-                <p className="text-red-400 text-sm">{error}</p>
+              <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/30">
+                <p className="text-red-700 text-xs">{error}</p>
               </div>
             )}
 
@@ -211,38 +188,39 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-2.5 bg-[var(--color-primary)] text-white font-medium rounded-lg text-sm transition-colors hover:bg-[var(--color-primary-dark)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Creating account...' : 'Create Account'}
             </button>
           </form>
 
           {/* Divider */}
-          <div className="my-6 flex items-center">
-            <div className="flex-1 border-t border-neutral-700"></div>
-            <span className="px-4 text-sm text-neutral-500">or continue with</span>
-            <div className="flex-1 border-t border-neutral-700"></div>
+          <div className="my-5 flex items-center">
+            <div className="flex-1 border-t border-[var(--color-border)]"></div>
+            <span className="px-3 text-xs text-[var(--color-foreground-muted)]">OR</span>
+            <div className="flex-1 border-t border-[var(--color-border)]"></div>
           </div>
 
-          {/* Google Sign-up */}
-          <div className="flex justify-center">
+          {/* Social */}
+          <div className="space-y-2">
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
               onError={() => setError('Google sign-up failed')}
-              theme="filled_black"
+              theme="outline"
               size="large"
               width="100%"
+              text="continue_with"
             />
           </div>
-        </div>
 
-        {/* Footer */}
-        <p className="text-center text-neutral-500 text-sm mt-6">
-          Already have an account?{' '}
-          <Link href="/login" className="text-neutral-300 hover:text-white font-medium transition-colors">
-            Sign in
-          </Link>
-        </p>
+          {/* Footer */}
+          <p className="text-center text-[var(--color-foreground-muted)] text-sm mt-5">
+            Already have an account?{' '}
+            <Link href="/login" className="text-[var(--color-primary)] hover:underline font-medium">
+              Sign in
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

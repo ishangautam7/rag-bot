@@ -31,7 +31,6 @@ export default function GroupButton({ sessionId, isGroupChat: initialIsGroup = f
             const ownerRes = await checkOwner(sessionId);
             setIsOwner(ownerRes.data.isOwner);
 
-            // Try to get members
             try {
                 const membersRes = await getMembers(sessionId);
                 if (membersRes.data.length > 0) {

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import {
     getProfile,
     adminGetUsers,
-    adminGetUser,
     adminResetUsage,
     adminUpdateAllowedModels,
     adminBroadcast,
@@ -49,24 +48,24 @@ export default function AdminPage() {
 
     if (!user) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[#0d0d0d]">
-                <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)]">
+                <div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin"></div>
             </div>
         );
     }
 
     if (unauthorized) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[#0d0d0d]">
+            <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)]">
                 <div className="text-center">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-900/20 flex items-center justify-center">
-                        <ShieldIcon size={32} className="text-red-400" />
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
+                        <ShieldIcon size={32} className="text-red-600" />
                     </div>
-                    <h2 className="text-xl font-semibold text-white mb-2">Access Denied</h2>
-                    <p className="text-neutral-400 mb-6">You don&apos;t have admin access.</p>
+                    <h2 className="text-xl font-semibold text-[var(--color-foreground)] mb-2">Access Denied</h2>
+                    <p className="text-[var(--color-foreground-muted)] mb-6">You don&apos;t have admin access.</p>
                     <button
                         onClick={() => router.push('/chat')}
-                        className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-all"
+                        className="px-6 py-2.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white font-medium rounded-lg transition-all"
                     >
                         Back to Chat
                     </button>
@@ -79,28 +78,24 @@ export default function AdminPage() {
         { id: 'overview', label: 'Overview', icon: <ChartIcon /> },
         { id: 'users', label: 'Users', icon: <UsersIcon /> },
         { id: 'broadcast', label: 'Broadcast', icon: <MailIcon /> },
-        { id: 'models', label: 'Models', icon: <RobotIcon /> },
         { id: 'activity', label: 'Activity', icon: <LogIcon /> },
         { id: 'metrics', label: 'Metrics', icon: <ClockIcon /> },
     ];
 
     return (
-        <div className="min-h-screen bg-[#0d0d0d]">
+        <div className="min-h-screen bg-[var(--color-background)]">
             {/* Header */}
-            <div className="border-b border-[#222] bg-[#141414]">
+            <div className="border-b border-[var(--color-border)] bg-[var(--color-card)]">
                 <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
-                            <ShieldIcon size={20} className="text-white" />
-                        </div>
                         <div>
-                            <h1 className="text-lg font-semibold text-white">Admin Dashboard</h1>
-                            <p className="text-xs text-neutral-500">Manage users, settings & more</p>
+                            <h1 className="text-lg font-semibold text-[var(--color-foreground)]">Admin Dashboard</h1>
+                            <p className="text-xs text-[var(--color-foreground-muted)]">Manage users, settings & more</p>
                         </div>
                     </div>
                     <button
                         onClick={() => router.push('/chat')}
-                        className="flex items-center gap-2 px-4 py-2 text-neutral-400 hover:text-white transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)] transition-colors"
                     >
                         <ArrowLeftIcon size={16} />
                         <span className="text-sm">Back to Chat</span>
@@ -109,7 +104,7 @@ export default function AdminPage() {
             </div>
 
             {/* Tabs */}
-            <div className="border-b border-[#222] bg-[#141414]">
+            <div className="border-b border-[var(--color-border)] bg-[var(--color-card)]">
                 <div className="max-w-6xl mx-auto px-6">
                     <div className="flex gap-1">
                         {tabs.map((tab) => (
@@ -117,8 +112,8 @@ export default function AdminPage() {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
-                                    ? 'border-emerald-500 text-emerald-400'
-                                    : 'border-transparent text-neutral-400 hover:text-white'
+                                    ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
+                                    : 'border-transparent text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)]'
                                     }`}
                             >
                                 {tab.icon}
@@ -134,7 +129,6 @@ export default function AdminPage() {
                 {activeTab === 'overview' && <OverviewTab />}
                 {activeTab === 'users' && <UsersTab />}
                 {activeTab === 'broadcast' && <BroadcastTab />}
-                {activeTab === 'models' && <ModelsTab />}
                 {activeTab === 'activity' && <ActivityTab />}
                 {activeTab === 'metrics' && <MetricsTab />}
             </div>
@@ -180,23 +174,23 @@ function OverviewTab() {
             </div>
 
             {/* Recent Users */}
-            <div className="bg-[#141414] border border-[#222] rounded-xl p-4">
-                <h3 className="text-sm font-medium text-white mb-4">Recent Users</h3>
+            <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-4">
+                <h3 className="text-sm font-medium text-[var(--color-foreground)] mb-4">Recent Users</h3>
                 <div className="space-y-2">
                     {users.slice(0, 5).map((u) => (
-                        <div key={u.id} className="flex items-center justify-between py-2 border-b border-[#222] last:border-0">
+                        <div key={u.id} className="flex items-center justify-between py-2 border-b border-[var(--color-border)] last:border-0">
                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center text-xs text-white">
+                                <div className="w-8 h-8 rounded-full bg-[var(--color-secondary)] border border-[var(--color-border)] flex items-center justify-center text-xs text-[var(--color-foreground)]">
                                     {u.username?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
                                 </div>
                                 <div>
-                                    <p className="text-sm text-white">{u.username || u.email}</p>
-                                    <p className="text-xs text-neutral-500">{u.email}</p>
+                                    <p className="text-sm text-[var(--color-foreground)]">{u.username || u.email}</p>
+                                    <p className="text-xs text-[var(--color-foreground-muted)]">{u.email}</p>
                                 </div>
                             </div>
                             <div className="text-right">
-                                <p className="text-sm text-neutral-300">{u._count?.sessions || 0} chats</p>
-                                <p className="text-xs text-neutral-500">Today: {u.todayUsage} msgs</p>
+                                <p className="text-sm text-[var(--color-foreground-muted)]">{u._count?.sessions || 0} chats</p>
+                                <p className="text-xs text-[var(--color-foreground-muted)]">Today: {u.todayUsage} msgs</p>
                             </div>
                         </div>
                     ))}
@@ -261,21 +255,15 @@ function UsersTab() {
                     placeholder="Search users by email or username..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2.5 text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500"
+                    className="flex-1 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg px-4 py-2.5 text-[var(--color-foreground)] placeholder-[var(--color-foreground-muted)] focus:outline-none focus:border-[var(--color-primary)]"
                 />
-                <button
-                    onClick={() => exportUsersCSV(users)}
-                    className="px-4 py-2 bg-[#1a1a1a] border border-[#333] rounded-lg text-neutral-300 hover:bg-[#222] transition-colors flex items-center gap-2"
-                >
-                    <DownloadIcon /> Export CSV
-                </button>
             </div>
 
             {/* Users Table */}
-            <div className="bg-[#141414] border border-[#222] rounded-xl overflow-hidden">
+            <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl overflow-hidden">
                 <table className="w-full">
                     <thead>
-                        <tr className="bg-[#1a1a1a] text-left text-xs text-neutral-400 uppercase">
+                        <tr className="bg-[var(--color-secondary)] text-left text-xs text-[var(--color-foreground-muted)] uppercase">
                             <th className="px-4 py-3">User</th>
                             <th className="px-4 py-3">Role</th>
                             <th className="px-4 py-3">Chats</th>
@@ -286,45 +274,45 @@ function UsersTab() {
                     </thead>
                     <tbody>
                         {filteredUsers.map((u) => (
-                            <tr key={u.id} className="border-t border-[#222] hover:bg-[#1a1a1a]">
+                            <tr key={u.id} className="border-t border-[var(--color-border)] hover:bg-[var(--color-secondary)]">
                                 <td className="px-4 py-3">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center text-xs text-white">
+                                        <div className="w-8 h-8 rounded-full bg-[var(--color-secondary)] border border-[var(--color-border)] flex items-center justify-center text-xs text-[var(--color-foreground)]">
                                             {u.username?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
                                         </div>
                                         <div>
-                                            <p className="text-sm text-white">{u.username || 'No name'}</p>
-                                            <p className="text-xs text-neutral-500">{u.email}</p>
+                                            <p className="text-sm text-[var(--color-foreground)]">{u.username || 'No name'}</p>
+                                            <p className="text-xs text-[var(--color-foreground-muted)]">{u.email}</p>
                                         </div>
                                     </div>
                                 </td>
                                 <td className="px-4 py-3">
                                     {u.isAdmin ? (
-                                        <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs rounded-full">Admin</span>
+                                        <span className="px-2 py-0.5 bg-purple-500/10 border border-purple-500/30 text-purple-700 text-xs rounded-full">Admin</span>
                                     ) : (
-                                        <span className="px-2 py-0.5 bg-neutral-700 text-neutral-300 text-xs rounded-full">User</span>
+                                        <span className="px-2 py-0.5 bg-[var(--color-secondary)] text-[var(--color-foreground-muted)] text-xs rounded-full">User</span>
                                     )}
                                 </td>
-                                <td className="px-4 py-3 text-sm text-neutral-300">{u._count?.sessions || 0}</td>
+                                <td className="px-4 py-3 text-sm text-[var(--color-foreground-muted)]">{u._count?.sessions || 0}</td>
                                 <td className="px-4 py-3">
-                                    <span className={`text-sm ${u.todayUsage >= 15 ? 'text-red-400' : 'text-neutral-300'}`}>
+                                    <span className={`text-sm ${u.todayUsage >= 15 ? 'text-red-600' : 'text-[var(--color-foreground-muted)]'}`}>
                                         {u.todayUsage}/15
                                     </span>
                                 </td>
                                 <td className="px-4 py-3">
-                                    <span className="text-xs text-neutral-400">{u.allowedModels?.length || 1} models</span>
+                                    <span className="text-xs text-[var(--color-foreground-muted)]">{u.allowedModels?.length || 1} models</span>
                                 </td>
                                 <td className="px-4 py-3">
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => setSelectedUser(u)}
-                                            className="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded hover:bg-emerald-500/30"
+                                            className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 text-xs rounded hover:bg-emerald-500/20"
                                         >
                                             Edit
                                         </button>
                                         <button
                                             onClick={() => handleResetUsage(u.id)}
-                                            className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded hover:bg-blue-500/30"
+                                            className="px-2 py-1 bg-blue-500/10 border border-blue-500/30 text-blue-700 text-xs rounded hover:bg-blue-500/20"
                                         >
                                             Reset
                                         </button>
@@ -358,11 +346,31 @@ function BroadcastTab() {
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<{ message: string; sent: number } | null>(null);
     const [error, setError] = useState('');
+    const [users, setUsers] = useState<AdminUser[]>([]);
+    const [userSearch, setUserSearch] = useState('');
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [sendToAll, setSendToAll] = useState(false);
+
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const res = await adminGetUsers();
+                setUsers(res.data);
+            } catch (e) {
+                console.error('Failed to load users:', e);
+            }
+        };
+        load();
+    }, []);
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!subject.trim() || !content.trim()) {
             setError('Subject and content are required');
+            return;
+        }
+        if (!sendToAll && selectedIds.length === 0) {
+            setError('Select at least one user or choose Send to all');
             return;
         }
 
@@ -371,64 +379,135 @@ function BroadcastTab() {
         setResult(null);
 
         try {
-            const res = await adminBroadcast(subject, content);
+            const res = await adminBroadcast(subject, content, sendToAll ? undefined : selectedIds);
             setResult(res.data);
             setSubject('');
             setContent('');
-        } catch (e: any) {
-            setError(e.response?.data?.error || 'Failed to send broadcast');
+            setSelectedIds([]);
+        } catch (e: unknown) {
+            const err = e as { response?: { data?: { error?: string } } };
+            setError(err.response?.data?.error || 'Failed to send broadcast');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="max-w-2xl">
-            <div className="bg-[#141414] border border-[#222] rounded-xl p-6">
-                <h3 className="text-lg font-medium text-white mb-4">Send Broadcast Email</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-6">
+                <h3 className="text-lg font-medium text-[var(--color-foreground)] mb-4">Send Broadcast Email</h3>
                 <form onSubmit={handleSend} className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <label className="text-sm text-[var(--color-foreground-muted)]">Recipients</label>
+                        <label className="flex items-center gap-2 text-sm text-[var(--color-foreground)]">
+                            <input
+                                type="checkbox"
+                                checked={sendToAll}
+                                onChange={(e) => setSendToAll(e.target.checked)}
+                                className="w-4 h-4 rounded border-[var(--color-border)]"
+                            />
+                            Send to all users
+                        </label>
+                    </div>
                     <div>
-                        <label className="block text-sm text-neutral-400 mb-2">Subject</label>
+                        <label className="block text-sm text-[var(--color-foreground-muted)] mb-2">Subject</label>
                         <input
                             type="text"
                             value={subject}
                             onChange={(e) => setSubject(e.target.value)}
                             placeholder="Email subject line"
-                            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2.5 text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg px-4 py-2.5 text-[var(--color-foreground)] placeholder-[var(--color-foreground-muted)] focus:outline-none focus:border-[var(--color-primary)]"
                         />
                     </div>
                     <div>
-                        <label className="block text-sm text-neutral-400 mb-2">Content (HTML supported)</label>
+                        <label className="block text-sm text-[var(--color-foreground-muted)] mb-2">Content (HTML supported)</label>
                         <textarea
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             placeholder="<h1>Hello!</h1><p>Your message here...</p>"
                             rows={8}
-                            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2.5 text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500 resize-none font-mono text-sm"
+                            className="w-full bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg px-4 py-2.5 text-[var(--color-foreground)] placeholder-[var(--color-foreground-muted)] focus:outline-none focus:border-[var(--color-primary)] resize-none font-mono text-sm"
                         />
                     </div>
-
                     {error && (
-                        <div className="p-3 bg-red-900/20 border border-red-800/50 rounded-lg">
-                            <p className="text-red-400 text-sm">{error}</p>
+                        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                            <p className="text-red-700 text-sm">{error}</p>
                         </div>
                     )}
-
                     {result && (
-                        <div className="p-3 bg-emerald-900/20 border border-emerald-800/50 rounded-lg">
-                            <p className="text-emerald-400 text-sm">{result.message}</p>
-                            <p className="text-emerald-400/70 text-xs mt-1">Sent to {result.sent} users</p>
+                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                            <p className="text-emerald-700 text-sm">{result.message}</p>
+                            <p className="text-emerald-700/70 text-xs mt-1">Sent to {result.sent} users</p>
                         </div>
                     )}
-
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-medium py-3 rounded-lg transition-colors"
+                        className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] disabled:opacity-50 text-white font-medium py-3 rounded-lg transition-colors"
                     >
                         {loading ? 'Sending...' : 'Send Broadcast Email'}
                     </button>
                 </form>
+            </div>
+            <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-6">
+                <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-[var(--color-foreground)]">Select Users</h4>
+                    <span className="text-xs text-[var(--color-foreground-muted)]">{selectedIds.length} selected</span>
+                </div>
+                <input
+                    type="text"
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    placeholder="Search by email or username..."
+                    className="w-full bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-[var(--color-foreground)] placeholder-[var(--color-foreground-muted)] focus:outline-none focus:border-[var(--color-primary)] mb-3"
+                />
+                <div className="max-h-72 overflow-auto rounded-lg border border-[var(--color-border)]">
+                    {(users || [])
+                        .filter(u =>
+                            u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
+                            (u.username || '').toLowerCase().includes(userSearch.toLowerCase())
+                        )
+                        .map((u) => {
+                            const checked = selectedIds.includes(u.id);
+                            return (
+                                <label key={u.id} className="flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-secondary)]">
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={checked}
+                                            onChange={(e) => {
+                                                const isChecked = e.target.checked;
+                                                setSelectedIds(prev => {
+                                                    if (isChecked) return [...prev, u.id];
+                                                    return prev.filter(id => id !== u.id);
+                                                });
+                                            }}
+                                            className="w-4 h-4 rounded border-[var(--color-border)]"
+                                        />
+                                        <div>
+                                            <p className="text-sm text-[var(--color-foreground)]">{u.username || 'No name'}</p>
+                                            <p className="text-[var(--color-foreground-muted)] text-xs">{u.email}</p>
+                                        </div>
+                                    </div>
+                                    {u.isAdmin && <span className="text-[var(--color-foreground-muted)] text-xs">Admin</span>}
+                                </label>
+                            );
+                        })}
+                </div>
+                <div className="flex items-center justify-between mt-3">
+                    <button
+                        onClick={() => setSelectedIds(users.map(u => u.id))}
+                        className="px-3 py-2 bg-[var(--color-secondary)] text-[var(--color-foreground)] rounded-lg"
+                    >
+                        Select all
+                    </button>
+                    <button
+                        onClick={() => setSelectedIds([])}
+                        className="px-3 py-2 bg-[var(--color-secondary)] text-[var(--color-foreground)] rounded-lg"
+                    >
+                        Clear
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -457,18 +536,18 @@ function ModelsTab() {
 
     return (
         <div className="space-y-4">
-            <div className="bg-[#141414] border border-[#222] rounded-xl p-4">
-                <h3 className="text-lg font-medium text-white mb-4">Available Free Models</h3>
-                <p className="text-sm text-neutral-400 mb-4">These models can be granted to users. All users have access to the default free model.</p>
+            <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-4">
+                <h3 className="text-lg font-medium text-[var(--color-foreground)] mb-4">Available Free Models</h3>
+                <p className="text-sm text-[var(--color-foreground-muted)] mb-4">These models can be granted to users. All users have access to the default free model.</p>
 
                 <div className="grid gap-3">
                     {models.map((model) => (
-                        <div key={model.id} className="flex items-center justify-between p-3 bg-[#1a1a1a] rounded-lg border border-[#333]">
+                        <div key={model.id} className="flex items-center justify-between p-3 bg-[var(--color-secondary)] rounded-lg border border-[var(--color-border)]">
                             <div>
-                                <p className="text-sm font-medium text-white">{model.name}</p>
-                                <p className="text-xs text-neutral-500">{model.id}</p>
+                                <p className="text-sm font-medium text-[var(--color-foreground)]">{model.name}</p>
+                                <p className="text-xs text-[var(--color-foreground-muted)]">{model.id}</p>
                             </div>
-                            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded-full">Free</span>
+                            <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 text-xs rounded-full">Free</span>
                         </div>
                     ))}
                 </div>
@@ -479,7 +558,13 @@ function ModelsTab() {
 
 // ==================== ACTIVITY TAB ====================
 function ActivityTab() {
-    const [logs, setLogs] = useState<any[]>([]);
+    type ActivityLog = {
+        id: string;
+        user?: { email?: string } | null;
+        action: string;
+        createdAt: string;
+    };
+    const [logs, setLogs] = useState<ActivityLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('');
 
@@ -511,12 +596,12 @@ function ActivityTab() {
                 placeholder="Filter by action..."
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2.5 text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500"
+                className="w-full bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg px-4 py-2.5 text-[var(--color-foreground)] placeholder-[var(--color-foreground-muted)] focus:outline-none focus:border-[var(--color-primary)]"
             />
-            <div className="bg-[#141414] border border-[#222] rounded-xl overflow-hidden">
+            <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl overflow-hidden">
                 <table className="w-full">
                     <thead>
-                        <tr className="bg-[#1a1a1a] text-left text-xs text-neutral-400 uppercase">
+                        <tr className="bg-[var(--color-secondary)] text-left text-xs text-[var(--color-foreground-muted)] uppercase">
                             <th className="px-4 py-3">User</th>
                             <th className="px-4 py-3">Action</th>
                             <th className="px-4 py-3">Time</th>
@@ -524,10 +609,10 @@ function ActivityTab() {
                     </thead>
                     <tbody>
                         {filteredLogs.slice(0, 50).map((log) => (
-                            <tr key={log.id} className="border-t border-[#222] hover:bg-[#1a1a1a]">
-                                <td className="px-4 py-3 text-sm text-white">{log.user?.email?.split('@')[0] || 'Unknown'}</td>
-                                <td className="px-4 py-3"><span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full">{log.action}</span></td>
-                                <td className="px-4 py-3 text-sm text-neutral-400">{new Date(log.createdAt).toLocaleString()}</td>
+                            <tr key={log.id} className="border-t border-[var(--color-border)] hover:bg-[var(--color-secondary)]">
+                                <td className="px-4 py-3 text-sm text-[var(--color-foreground)]">{log.user?.email?.split('@')[0] || 'Unknown'}</td>
+                                <td className="px-4 py-3"><span className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/30 text-blue-700 text-xs rounded-full">{log.action}</span></td>
+                                <td className="px-4 py-3 text-sm text-[var(--color-foreground-muted)]">{new Date(log.createdAt).toLocaleString()}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -539,7 +624,14 @@ function ActivityTab() {
 
 // ==================== METRICS TAB ====================
 function MetricsTab() {
-    const [metrics, setMetrics] = useState<any>(null);
+    type Metrics = {
+        avg: number;
+        p50: number;
+        p95: number;
+        count: number;
+        history: Array<{ date: string; avg: number }>;
+    };
+    const [metrics, setMetrics] = useState<Metrics | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -562,32 +654,32 @@ function MetricsTab() {
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-[#141414] border border-[#222] rounded-xl p-4">
-                    <p className="text-xs text-neutral-500 mb-1">Average</p>
-                    <p className="text-2xl font-bold text-white">{metrics?.avg || 0}ms</p>
+                <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-4">
+                    <p className="text-xs text-[var(--color-foreground-muted)] mb-1">Average</p>
+                    <p className="text-2xl font-bold text-[var(--color-foreground)]">{metrics?.avg || 0}ms</p>
                 </div>
-                <div className="bg-[#141414] border border-[#222] rounded-xl p-4">
-                    <p className="text-xs text-neutral-500 mb-1">P50</p>
-                    <p className="text-2xl font-bold text-white">{metrics?.p50 || 0}ms</p>
+                <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-4">
+                    <p className="text-xs text-[var(--color-foreground-muted)] mb-1">P50</p>
+                    <p className="text-2xl font-bold text-[var(--color-foreground)]">{metrics?.p50 || 0}ms</p>
                 </div>
-                <div className="bg-[#141414] border border-[#222] rounded-xl p-4">
-                    <p className="text-xs text-neutral-500 mb-1">P95</p>
-                    <p className="text-2xl font-bold text-white">{metrics?.p95 || 0}ms</p>
+                <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-4">
+                    <p className="text-xs text-[var(--color-foreground-muted)] mb-1">P95</p>
+                    <p className="text-2xl font-bold text-[var(--color-foreground)]">{metrics?.p95 || 0}ms</p>
                 </div>
-                <div className="bg-[#141414] border border-[#222] rounded-xl p-4">
-                    <p className="text-xs text-neutral-500 mb-1">Total</p>
-                    <p className="text-2xl font-bold text-white">{metrics?.count || 0}</p>
+                <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-4">
+                    <p className="text-xs text-[var(--color-foreground-muted)] mb-1">Total</p>
+                    <p className="text-2xl font-bold text-[var(--color-foreground)]">{metrics?.count || 0}</p>
                 </div>
             </div>
-            <div className="bg-[#141414] border border-[#222] rounded-xl p-4">
-                <h3 className="text-lg font-medium text-white mb-4">7-Day History</h3>
-                {(metrics?.history || []).map((day: any) => (
+            <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-4">
+                <h3 className="text-lg font-medium text-[var(--color-foreground)] mb-4">7-Day History</h3>
+                {(metrics?.history || []).map((day: { date: string; avg: number }) => (
                     <div key={day.date} className="flex items-center gap-3 py-1">
-                        <span className="text-xs text-neutral-400 w-20">{day.date}</span>
-                        <div className="flex-1 bg-[#222] rounded-full h-3">
-                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min((day.avg / 3000) * 100, 100)}%` }} />
+                        <span className="text-xs text-[var(--color-foreground-muted)] w-20">{day.date}</span>
+                        <div className="flex-1 bg-[var(--color-border)] rounded-full h-3">
+                            <div className="h-full bg-[var(--color-primary)] rounded-full" style={{ width: `${Math.min((day.avg / 3000) * 100, 100)}%` }} />
                         </div>
-                        <span className="text-xs text-white w-16 text-right">{day.avg}ms</span>
+                        <span className="text-xs text-[var(--color-foreground)] w-16 text-right">{day.avg}ms</span>
                     </div>
                 ))}
             </div>
@@ -627,37 +719,37 @@ function UserDetailModal({ user, onClose, onUpdate }: { user: AdminUser; onClose
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
-            <div className="bg-[#1a1a1a] border border-[#333] rounded-2xl p-6 max-w-md w-full m-4" onClick={(e) => e.stopPropagation()}>
-                <h3 className="text-lg font-semibold text-white mb-4">Edit User</h3>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+            <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl p-6 max-w-md w-full m-4" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-lg font-semibold text-[var(--color-foreground)] mb-4">Edit User</h3>
 
                 <div className="mb-4">
-                    <p className="text-sm text-neutral-400">Email</p>
-                    <p className="text-white">{user.email}</p>
+                    <p className="text-sm text-[var(--color-foreground-muted)]">Email</p>
+                    <p className="text-[var(--color-foreground)]">{user.email}</p>
                 </div>
 
                 <div className="mb-4">
-                    <p className="text-sm text-neutral-400 mb-2">Allowed Models</p>
+                    <p className="text-sm text-[var(--color-foreground-muted)] mb-2">Allowed Models</p>
                     <div className="space-y-2 max-h-48 overflow-y-auto">
                         {models.map((model) => (
-                            <label key={model.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer">
+                            <label key={model.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-secondary)] cursor-pointer">
                                 <input
                                     type="checkbox"
                                     checked={selectedModels.includes(model.id)}
                                     onChange={() => toggleModel(model.id)}
-                                    className="w-4 h-4 rounded border-neutral-600 bg-neutral-800 text-emerald-500 focus:ring-emerald-500"
+                                    className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
                                 />
-                                <span className="text-sm text-white">{model.name}</span>
+                                <span className="text-sm text-[var(--color-foreground)]">{model.name}</span>
                             </label>
                         ))}
                     </div>
                 </div>
 
                 <div className="flex gap-3">
-                    <button onClick={onClose} className="flex-1 py-2 border border-[#333] rounded-lg text-neutral-400 hover:bg-white/5">
+                    <button onClick={onClose} className="flex-1 py-2 border border-[var(--color-border)] rounded-lg text-[var(--color-foreground-muted)] hover:bg-[var(--color-secondary)]">
                         Cancel
                     </button>
-                    <button onClick={handleSave} disabled={saving} className="flex-1 py-2 bg-emerald-500 rounded-lg text-white hover:bg-emerald-600 disabled:opacity-50">
+                    <button onClick={handleSave} disabled={saving} className="flex-1 py-2 bg-[var(--color-primary)] rounded-lg text-white hover:bg-[var(--color-primary-dark)] disabled:opacity-50">
                         {saving ? 'Saving...' : 'Save'}
                     </button>
                 </div>
@@ -677,20 +769,20 @@ function StatCard({ label, value, icon, color }: { label: string; value: number;
     return (
         <div className={`bg-gradient-to-br ${colors[color]} border rounded-xl p-4`}>
             <div className="flex items-center justify-between mb-2">
-                <span className="text-neutral-400">{icon}</span>
+                <span className="text-[var(--color-foreground-muted)]">{icon}</span>
             </div>
-            <p className="text-2xl font-bold text-white">{value.toLocaleString()}</p>
-            <p className="text-xs text-neutral-400">{label}</p>
+            <p className="text-2xl font-bold text-[var(--color-foreground)]">{value.toLocaleString()}</p>
+            <p className="text-xs text-[var(--color-foreground-muted)]">{label}</p>
         </div>
     );
 }
 
 function QuickActionCard({ title, description, icon, onClick }: { title: string; description: string; icon: React.ReactNode; onClick?: () => void }) {
     return (
-        <button onClick={onClick} className="text-left bg-[#141414] border border-[#222] rounded-xl p-4 hover:border-emerald-500/30 transition-colors">
-            <div className="text-neutral-400 mb-2">{icon}</div>
-            <p className="text-sm font-medium text-white">{title}</p>
-            <p className="text-xs text-neutral-500">{description}</p>
+        <button onClick={onClick} className="text-left bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl p-4 hover:border-[var(--color-primary)]/30 transition-colors">
+            <div className="text-[var(--color-foreground-muted)] mb-2">{icon}</div>
+            <p className="text-sm font-medium text-[var(--color-foreground)]">{title}</p>
+            <p className="text-xs text-[var(--color-foreground-muted)]">{description}</p>
         </button>
     );
 }

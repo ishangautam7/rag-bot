@@ -5,10 +5,11 @@ import { useParams } from 'next/navigation';
 import ChatInput from '@/app/components/Chat/ChatInput';
 import MessageBubble from '@/app/components/Chat/MessageBubble';
 import ShareButton from '@/app/components/Chat/ShareButton';
+import ExportButton from '@/app/components/Chat/ExportButton';
 import { Message } from '@/app/types';
 import { getMessages, sendMessage } from '@/app/lib/api';
 import type { Message as BackendMessage, SendMessageResponse } from '@/app/lib/types';
-import { RobotIcon } from '@/app/components/Icons';
+// Removed RobotIcon for a cleaner typing indicator
 import { useSocket } from '@/app/hooks/useSocket';
 
 export default function ChatPage() {
@@ -138,7 +139,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="h-full flex flex-col relative">
+    <div className="h-full flex flex-col relative bg-[var(--color-background-secondary)]">
       {/* Share Button & Live Indicator - Fixed in top right */}
       <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
         {/* Live indicator for collaborative sessions */}
@@ -148,7 +149,7 @@ export default function ChatPage() {
             <span className="text-xs text-green-400 font-medium">Live</span>
           </div>
         )}
-        {/* <ShareButton sessionId={chatId} /> */}
+        <ExportButton sessionId={chatId} />
       </div>
 
       {/* Messages Container */}
@@ -161,13 +162,13 @@ export default function ChatPage() {
           {messages.length === 0 ? (
             <div className="h-full flex items-center justify-center py-20">
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-neutral-800 border border-neutral-700 mb-4">
-                  <svg className="w-7 h-7 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[var(--color-secondary)] border border-[var(--color-border)] mb-4">
+                  <svg className="w-7 h-7 text-[var(--color-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                   </svg>
                 </div>
-                <h2 className="text-xl font-medium mb-1 text-neutral-100">Start a conversation</h2>
-                <p className="text-neutral-500 text-sm">Type a message below to begin</p>
+                <h2 className="text-xl font-semibold mb-1 text-[var(--color-foreground)]">Start a conversation</h2>
+                <p className="text-[var(--color-foreground-muted)] text-sm">Type a message below to begin</p>
               </div>
             </div>
           ) : (
@@ -182,15 +183,10 @@ export default function ChatPage() {
 
               {/* Typing Indicator */}
               {loading && (
-                <div className="flex gap-3">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-neutral-800 flex items-center justify-center">
-                    <RobotIcon size={16} />
-                  </div>
-                  <div className="flex items-center gap-1 px-4 py-3 bg-neutral-900 rounded-lg border border-neutral-800">
-                    <div className="w-2 h-2 rounded-full bg-neutral-500 animate-bounce"></div>
-                    <div className="w-2 h-2 rounded-full bg-neutral-500 animate-bounce" style={{ animationDelay: '0.15s' }}></div>
-                    <div className="w-2 h-2 rounded-full bg-neutral-500 animate-bounce" style={{ animationDelay: '0.3s' }}></div>
-                  </div>
+                <div className="flex items-center gap-2 px-4 py-3 bg-[var(--color-card)] rounded-xl border border-[var(--color-border)]">
+                  <div className="w-2 h-2 rounded-full bg-[var(--color-foreground-muted)] animate-bounce"></div>
+                  <div className="w-2 h-2 rounded-full bg-[var(--color-foreground-muted)] animate-bounce" style={{ animationDelay: '0.15s' }}></div>
+                  <div className="w-2 h-2 rounded-full bg-[var(--color-foreground-muted)] animate-bounce" style={{ animationDelay: '0.3s' }}></div>
                 </div>
               )}
 
@@ -204,9 +200,9 @@ export default function ChatPage() {
       {isScrolled && (
         <button
           onClick={scrollToLatest}
-          className="fixed bottom-28 right-6 w-10 h-10 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center hover:bg-neutral-700 transition-colors z-20"
+          className="fixed bottom-28 right-6 w-10 h-10 rounded-full bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-center hover:bg-[var(--color-secondary)] transition-colors z-20 shadow-sm"
         >
-          <svg className="w-5 h-5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-[var(--color-foreground-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
           </svg>
         </button>

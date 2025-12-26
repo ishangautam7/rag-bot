@@ -28,17 +28,10 @@ export default function RootLayout({
   const showNavbar = pathname === '/';
 
   return (
-    <html lang="en" className="dark scroll-smooth">
-      <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased text-neutral-100 bg-neutral-950 min-h-screen flex flex-col`}>
+    <html lang="en" className="scroll-smooth">
+      <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased bg-white text-gray-900 min-h-screen flex flex-col`}>
         <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''}>
-          {/* Background */}
-          <div className="fixed inset-0 z-[-1] overflow-hidden pointer-events-none">
-            <div className="absolute top-[-20%] left-[-10%] w-[40%] h-[40%] rounded-full bg-neutral-800/30 blur-[100px]" />
-            <div className="absolute bottom-[-20%] right-[-10%] w-[40%] h-[40%] rounded-full bg-neutral-800/30 blur-[100px]" />
-          </div>
-
           {showNavbar && <Navbar />}
-
           <main className={`flex-grow ${showNavbar ? 'pt-16' : ''}`}>
             {children}
           </main>

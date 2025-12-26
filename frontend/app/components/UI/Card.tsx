@@ -1,34 +1,44 @@
-import React from 'react';
-import { twMerge } from 'tailwind-merge';
+'use client';
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-    variant?: 'default' | 'glass' | 'outlined';
+import { ReactNode } from 'react';
+
+interface CardProps {
+    children: ReactNode;
+    className?: string;
     hoverEffect?: boolean;
+    glowColor?: 'primary' | 'accent' | 'none';
+    padding?: 'sm' | 'md' | 'lg' | 'none';
 }
 
-export const Card = React.forwardRef<HTMLDivElement, CardProps>(
-    ({ className, variant = 'default', hoverEffect = false, children, ...props }, ref) => {
+export const Card = ({
+    children,
+    className = '',
+    hoverEffect = false,
+    glowColor = 'none',
+    padding = 'md',
+}: CardProps) => {
+    const baseStyles = 'rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] backdrop-blur-xl transition-all duration-300';
 
-        const baseStyles = "rounded-xl p-5 transition-all duration-200";
+    const paddingStyles = {
+        none: '',
+        sm: 'p-4',
+        md: 'p-6',
+        lg: 'p-8',
+    };
 
-        const variants = {
-            default: "bg-neutral-900 border border-neutral-800",
-            glass: "glass",
-            outlined: "bg-transparent border border-neutral-700"
-        };
+    const hoverStyles = hoverEffect
+        ? 'hover:border-[var(--color-primary)] hover:shadow-lg hover:shadow-violet-500/10 hover:-translate-y-1 cursor-pointer'
+        : '';
 
-        const hoverStyles = hoverEffect ? "hover:border-neutral-700 hover:bg-neutral-800/50" : "";
+    const glowStyles = {
+        none: '',
+        primary: 'shadow-lg shadow-violet-500/10',
+        accent: 'shadow-lg shadow-cyan-500/10',
+    };
 
-        return (
-            <div
-                ref={ref}
-                className={twMerge(baseStyles, variants[variant], hoverStyles, className)}
-                {...props}
-            >
-                {children}
-            </div>
-        );
-    }
-);
-
-Card.displayName = "Card";
+    return (
+        <div className={`${baseStyles} ${paddingStyles[padding]} ${hoverStyles} ${glowStyles[glowColor]} ${className}`}>
+            {children}
+        </div>
+    );
+};

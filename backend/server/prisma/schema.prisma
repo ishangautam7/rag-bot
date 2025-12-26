@@ -198,7 +198,6 @@ enum MemberRole {
   MEMBER
 }
 
-// Track free model usage per user per day
 model UsageLog {
   id        String   @id @default(uuid())
   

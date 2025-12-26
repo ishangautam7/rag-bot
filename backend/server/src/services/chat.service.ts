@@ -172,7 +172,6 @@ export const addMessage = async (
     if (apiKey) ragPayload.api_key = apiKey;
     if (apiEndpoint) ragPayload.api_endpoint = apiEndpoint;
 
-
     const ragResponse = await fetch('http://localhost:8000/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

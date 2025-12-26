@@ -1,47 +1,49 @@
-import React from 'react';
-import { twMerge } from 'tailwind-merge';
+'use client';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'gradient';
+import { ReactNode } from 'react';
+
+interface ButtonProps {
+  children: ReactNode;
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
-  isLoading?: boolean;
-  icon?: React.ReactNode;
+  disabled?: boolean;
+  className?: string;
+  onClick?: () => void;
+  type?: 'button' | 'submit' | 'reset';
 }
 
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'primary', size = 'md', isLoading, icon, children, ...props }, ref) => {
+export const Button = ({
+  children,
+  variant = 'primary',
+  size = 'md',
+  disabled = false,
+  className = '',
+  onClick,
+  type = 'button',
+}: ButtonProps) => {
+  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-150 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed';
 
-    const baseStyles = "inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-neutral-950 focus:ring-neutral-600";
+  const variants = {
+    primary: 'bg-[var(--color-foreground)] text-[var(--color-background)] hover:opacity-90',
+    secondary: 'bg-transparent text-[var(--color-foreground)] border border-[var(--color-border-strong)] hover:bg-[var(--color-secondary)]',
+    ghost: 'text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-secondary)]',
+    danger: 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20',
+  };
 
-    const variants = {
-      primary: "bg-neutral-100 hover:bg-white text-neutral-900",
-      secondary: "bg-neutral-800 hover:bg-neutral-700 text-neutral-100 border border-neutral-700",
-      ghost: "bg-transparent hover:bg-neutral-800 text-neutral-300 hover:text-neutral-100",
-      gradient: "bg-neutral-100 hover:bg-white text-neutral-900"
-    };
+  const sizes = {
+    sm: 'text-xs px-3 py-1.5',
+    md: 'text-sm px-4 py-2',
+    lg: 'text-sm px-5 py-2.5',
+  };
 
-    const sizes = {
-      sm: "px-3 py-1.5 text-sm",
-      md: "px-5 py-2.5 text-sm",
-      lg: "px-6 py-3 text-base"
-    };
-
-    return (
-      <button
-        ref={ref}
-        className={twMerge(baseStyles, variants[variant], sizes[size], className)}
-        disabled={isLoading || props.disabled}
-        {...props}
-      >
-        {isLoading ? (
-          <span className="mr-2 animate-spin w-4 h-4 border-2 border-neutral-400 border-t-neutral-900 rounded-full" />
-        ) : icon ? (
-          <span className="mr-2">{icon}</span>
-        ) : null}
-        {children}
-      </button>
-    );
-  }
-);
-
-Button.displayName = "Button";
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
+    >
+      {children}
+    </button>
+  );
+};
