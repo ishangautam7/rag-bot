@@ -37,6 +37,38 @@ export default function MessageBubble({ message, isUser }: MessageBubbleProps) {
           ? 'bg-[var(--color-primary)] text-white rounded-tr-md'
           : 'bg-[var(--color-secondary)] text-[var(--color-foreground)] rounded-tl-md shadow-sm'
           }`}>
+          {message.attachments && message.attachments.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {message.attachments.map((file, i) => (
+                <a
+                  key={i}
+                  href={file.url || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`flex items-center gap-3 px-3 py-2 rounded-xl border max-w-full transition-colors hover:opacity-80 ${isUser
+                    ? 'bg-white/10 border-white/20 text-white'
+                    : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-foreground)]'
+                    }`}
+                  onClick={(e) => !file.url && e.preventDefault()}
+                >
+                  <div className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${isUser ? 'bg-white/20' : 'bg-[var(--color-secondary)] text-[var(--color-primary)]'
+                    }`}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <div className="flex flex-col min-w-0 pr-1">
+                    <span className="truncate text-xs font-semibold">{file.name}</span>
+                    <span className={`text-[10px] uppercase tracking-wide ${isUser ? 'text-white/70' : 'text-[var(--color-foreground-muted)]'
+                      }`}>
+                      {file.type ? file.type.split('/')[1] : 'FILE'}
+                    </span>
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
+
           {isUser ? (
             <p className="whitespace-pre-wrap">{message.content}</p>
           ) : (

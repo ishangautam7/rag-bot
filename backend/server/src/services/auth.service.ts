@@ -25,7 +25,66 @@ const transporter = nodemailer.createTransport({
 });
 
 const generateToken = (userId: string) => {
-  return jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: '15m' }); // Short-lived access token
+};
+
+const generateRefreshToken = async (userId: string) => {
+  const token = crypto.randomBytes(40).toString('hex');
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+  await prisma.refreshToken.create({
+    data: {
+      token,
+      userId,
+      expiresAt,
+    },
+  });
+
+  return token;
+};
+
+// Revoke a specific refresh token
+export const revokeToken = async (token: string) => {
+  await prisma.refreshToken.update({
+    where: { token },
+    data: { revoked: true },
+  });
+};
+
+// Rotate Refresh Token
+export const refreshToken = async (token: string) => {
+  const storedToken = await prisma.refreshToken.findUnique({
+    where: { token },
+    include: { user: true },
+  });
+
+  if (!storedToken || storedToken.revoked) {
+    if (storedToken) {
+      await prisma.refreshToken.updateMany({
+        where: { userId: storedToken.userId },
+        data: { revoked: true }
+      });
+    }
+    throw new Error('Invalid or revoked refresh token');
+  }
+
+  if (new Date() > storedToken.expiresAt) {
+    throw new Error('Refresh token expired');
+  }
+
+  const newAccessToken = generateToken(storedToken.userId);
+  const newRefreshToken = await generateRefreshToken(storedToken.userId);
+
+  await prisma.refreshToken.update({
+    where: { id: storedToken.id },
+    data: { revoked: true },
+  });
+
+  return {
+    user: storedToken.user,
+    token: newAccessToken,
+    refreshToken: newRefreshToken
+  };
 };
 
 // Email/Password Register
@@ -39,7 +98,10 @@ export const registerUser = async (email: string, password: string, username: st
     data: { email, password: hashedPassword, username },
   });
 
-  return { user, token: generateToken(user.id) };
+  const accessToken = generateToken(user.id);
+  const refreshToken = await generateRefreshToken(user.id);
+
+  return { user, token: accessToken, refreshToken };
 };
 
 // 2. Email/Password Login
@@ -50,7 +112,10 @@ export const loginUser = async (email: string, password: string) => {
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) throw new Error('Invalid credentials');
 
-  return { user, token: generateToken(user.id) };
+  const accessToken = generateToken(user.id);
+  const refreshToken = await generateRefreshToken(user.id);
+
+  return { user, token: accessToken, refreshToken };
 };
 
 // 3. Google Login (Verify Token & Find/Create User)
@@ -82,7 +147,10 @@ export const googleLogin = async (idToken: string) => {
     });
   }
 
-  return { user, token: generateToken(user.id) };
+  const accessToken = generateToken(user.id);
+  const refreshToken = await generateRefreshToken(user.id);
+
+  return { user, token: accessToken, refreshToken };
 };
 
 // 4. Get User Profile
@@ -126,7 +194,6 @@ export const forgotPassword = async (email: string) => {
 
   // Send email
   const resetUrl = `${FRONTEND_URL}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
-  console.log('Reset URL:', resetUrl);
 
   // Try to send email if configured
   if (EMAIL_USER && EMAIL_PASS) {
@@ -208,9 +275,6 @@ export const broadcastEmail = async (adminId: string, subject: string, htmlConte
 
   // Check if email is configured
   if (!EMAIL_USER || !EMAIL_PASS) {
-    console.log('DEV MODE: Would send to', users.length, 'users');
-    console.log('Subject:', subject);
-    console.log('Content:', htmlContent);
     return {
       message: 'Email not configured (dev mode)',
       sent: 0,

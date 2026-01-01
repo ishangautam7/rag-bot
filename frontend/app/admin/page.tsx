@@ -78,8 +78,8 @@ export default function AdminPage() {
         { id: 'overview', label: 'Overview', icon: <ChartIcon /> },
         { id: 'users', label: 'Users', icon: <UsersIcon /> },
         { id: 'broadcast', label: 'Broadcast', icon: <MailIcon /> },
-        { id: 'activity', label: 'Activity', icon: <LogIcon /> },
-        { id: 'metrics', label: 'Metrics', icon: <ClockIcon /> },
+        // { id: 'activity', label: 'Activity', icon: <LogIcon /> },
+        // { id: 'metrics', label: 'Metrics', icon: <ClockIcon /> },
     ];
 
     return (

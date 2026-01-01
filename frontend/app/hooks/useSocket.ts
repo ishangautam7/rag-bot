@@ -16,8 +16,8 @@ export function useSocket({ sessionId, isCollaborative = false, onNewMessage }: 
     const socketRef = useRef<Socket | null>(null);
 
     useEffect(() => {
-        // Only connect for collaborative sessions
-        if (!sessionId || !isCollaborative) return;
+        // Connect for all sessions (read-only, collaborative, or just viewing)
+        if (!sessionId) return;
 
         // Create socket connection
         const socket = io(SOCKET_URL, {

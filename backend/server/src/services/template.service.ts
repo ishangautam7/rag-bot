@@ -63,7 +63,7 @@ export const deleteTemplate = async (templateId: string, userId: string) => {
 };
 
 /**
- * Seed default templates (run once on startup or manually)
+ * Seed default templates
  */
 export const seedDefaultTemplates = async () => {
     const existing = await prisma.promptTemplate.count({
@@ -74,6 +74,7 @@ export const seedDefaultTemplates = async () => {
         await prisma.promptTemplate.createMany({
             data: DEFAULT_TEMPLATES.map(t => ({ ...t, userId: null })),
         });
-        console.log('Seeded default prompt templates');
     }
 };
+
+

@@ -2,8 +2,8 @@ import axios from 'axios';
 import type { AuthResponse, CreateSessionResponse, SendMessageResponse, Session, Message, UploadResponse } from './types';
 
 const api = axios.create({
-  baseURL: 'https://api.ishangautam7.com.np/api',
-  // baseURL: 'http://localhost:4000/api',
+  // baseURL: 'https://api.ishangautam7.com.np/api',
+  baseURL: 'http://localhost:4000/api',
 });
 
 api.interceptors.request.use((config) => {
@@ -15,6 +15,36 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      try {
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!refreshToken) throw new Error('No refresh token');
+
+        const { data } = await axios.post('http://localhost:4000/api/auth/refresh', { refreshToken });
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('refreshToken', data.refreshToken);
+
+        originalRequest.headers.Authorization = `Bearer ${data.token}`;
+        return api(originalRequest);
+      } catch (err) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
+        return Promise.reject(err);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 // Auth
 export const login = (payload: { email: string; password: string }) =>
@@ -41,10 +71,12 @@ export const getSessions = () => api.get<Session[]>('/chat/sessions');
 export const createSession = (message: string, model?: string, apiKey?: string, apiEndpoint?: string) =>
   api.post<CreateSessionResponse>('/chat/sessions', { message, model, apiKey, apiEndpoint });
 
-export const sendMessage = (sessionId: string, content: string, model?: string, apiKey?: string, apiEndpoint?: string) =>
-  api.post<SendMessageResponse>('/chat/message', { sessionId, content, model, apiKey, apiEndpoint });
+export const sendMessage = (sessionId: string, content: string, model?: string, apiKey?: string, apiEndpoint?: string, attachments?: any[]) =>
+  api.post<SendMessageResponse>('/chat/message', { sessionId, content, model, apiKey, apiEndpoint, attachments });
 
 export const getMessages = (sessionId: string) => api.get<Message[]>(`/chat/sessions/${sessionId}`);
+
+export const getDocuments = (sessionId: string) => api.get<{ id: number; filename: string; created_at: string }[]>(`/chat/sessions/${sessionId}/documents`);
 
 export const uploadFile = (file: File, sessionId?: string) => {
   const form = new FormData();

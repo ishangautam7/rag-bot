@@ -71,7 +71,8 @@ export default function SharedChatPage() {
             </header>
 
             {/* Messages */}
-            <main className="max-w-4xl mx-auto px-6 py-8">
+            {/* Messages */}
+            <main className="max-w-4xl mx-auto px-6 py-8 pb-32">
                 <div className="space-y-6">
                     {chat.messages.map((message) => (
                         <div
@@ -80,8 +81,8 @@ export default function SharedChatPage() {
                         >
                             <div
                                 className={`max-w-[85%] px-4 py-3 rounded-2xl ${message.role === 'USER'
-                                        ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)] rounded-br-md'
-                                        : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-foreground)] rounded-bl-md'
+                                    ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)] rounded-br-md'
+                                    : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-foreground)] rounded-bl-md'
                                     }`}
                             >
                                 {message.role === 'USER' ? (
@@ -98,7 +99,7 @@ export default function SharedChatPage() {
             </main>
 
             {/* Footer */}
-            <footer className="border-t border-[var(--color-border)] bg-[var(--color-card)] py-6 mt-auto">
+            <footer className="fixed bottom-0 left-0 right-0 border-t border-[var(--color-border)] bg-[var(--color-card)] py-6 z-10 w-full">
                 <div className="max-w-4xl mx-auto px-6 text-center">
                     <p className="text-[var(--color-foreground-muted)] text-sm">
                         This is a read-only shared conversation

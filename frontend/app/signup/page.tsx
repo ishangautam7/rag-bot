@@ -16,6 +16,7 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
 
   const validateEmail = (email: string) => {
@@ -51,6 +52,7 @@ export default function SignupPage() {
       const data = res.data;
       if (data?.token) {
         localStorage.setItem('token', data.token);
+        if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
         router.push('/chat');
       } else {
         setError('Signup failed');
@@ -71,6 +73,7 @@ export default function SignupPage() {
       const data = res.data;
       if (data?.token) {
         localStorage.setItem('token', data.token);
+        if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
         router.push('/chat');
       } else {
         setError('Google sign-up failed.');
@@ -166,15 +169,27 @@ export default function SignupPage() {
               <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
                 Confirm Password
               </label>
-              <input
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleInputChange}
-                placeholder="Confirm your password"
-                className="w-full bg-[var(--color-input)] border border-[var(--color-input-border)] rounded-lg py-2.5 px-3 text-sm text-[var(--color-foreground)] placeholder-[var(--color-foreground-muted)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/10 transition-all"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  placeholder="Confirm your password"
+                  className="w-full bg-[var(--color-input)] border border-[var(--color-input-border)] rounded-lg py-2.5 px-3 pr-10 text-sm text-[var(--color-foreground)] placeholder-[var(--color-foreground-muted)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/10 transition-all"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)] transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             {/* Error */}
@@ -202,15 +217,18 @@ export default function SignupPage() {
           </div>
 
           {/* Social */}
-          <div className="space-y-2">
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={() => setError('Google sign-up failed')}
-              theme="outline"
-              size="large"
-              width="100%"
-              text="continue_with"
-            />
+          <div className="space-y-2 w-full">
+            <div className="w-full">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => setError('Google sign-up failed')}
+                theme="outline"
+                size="large"
+                width="100%"
+                text="continue_with"
+                containerProps={{ style: { width: '100%' } }}
+              />
+            </div>
           </div>
 
           {/* Footer */}

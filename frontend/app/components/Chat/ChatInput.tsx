@@ -6,14 +6,16 @@ import ModelSelector from './ModelSelector';
 import { useFreeMessageLimit } from '@/app/hooks/useFreeMessageLimit';
 
 interface ChatInputProps {
-  onSendMessage: (message: string, files?: File[], model?: string, apiKey?: string, apiEndpoint?: string) => void;
+  onSendMessage: (message: string, files?: File[], model?: string, apiKey?: string, apiEndpoint?: string, uploadedFiles?: { name: string; url: string; type: string }[]) => void;
   disabled?: boolean;
   sessionId?: string;
+  onUploadComplete?: (filename: string) => void;
 }
 
-export default function ChatInput({ onSendMessage, disabled = false, sessionId }: ChatInputProps) {
+export default function ChatInput({ onSendMessage, disabled = false, sessionId, onUploadComplete }: ChatInputProps) {
   const [message, setMessage] = useState('');
   const [files, setFiles] = useState<File[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; type: string; url: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash');
@@ -66,7 +68,15 @@ export default function ChatInput({ onSendMessage, disabled = false, sessionId }
       setUploading(true);
       try {
         for (const file of newFiles) {
-          await uploadFile(file, sessionId);
+          const res = await uploadFile(file, sessionId);
+          if (res.data && res.data.file) {
+            setUploadedFiles(prev => [...prev, {
+              name: file.name,
+              type: file.type,
+              url: `http://localhost:4000/api/chat/files/${res.data.file.filename}`
+            }]);
+          }
+          if (onUploadComplete) onUploadComplete(file.name);
         }
       } catch (error) {
         console.error('Upload failed:', error);
@@ -106,14 +116,16 @@ export default function ChatInput({ onSendMessage, disabled = false, sessionId }
 
       const apiKey = getApiKeyForModel(selectedModel);
       const apiEndpoint = getApiEndpointForModel(selectedModel);
-      onSendMessage(message, files, selectedModel, apiKey, apiEndpoint);
+      onSendMessage(message, files, selectedModel, apiKey, apiEndpoint, uploadedFiles);
 
       if (isFreeModel(selectedModel)) {
         refreshUsage();
       }
 
+
       setMessage('');
       setFiles([]);
+      setUploadedFiles([]);
     }
   };
 
@@ -217,7 +229,7 @@ export default function ChatInput({ onSendMessage, disabled = false, sessionId }
             {/* Send Button */}
             <button
               onClick={handleSend}
-              disabled={!message.trim() || disabled}
+              disabled={!message.trim() || disabled || uploading}
               className="px-3 py-1.5 bg-[var(--color-primary)] text-white disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium rounded-lg transition-colors hover:bg-[var(--color-primary-dark)] flex items-center gap-1.5"
             >
               {disabled ? (

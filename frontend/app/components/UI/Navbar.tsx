@@ -23,6 +23,7 @@ export const Navbar = () => {
     const toggleTheme = () => {
         const next = theme === 'dark' ? 'light' : 'dark';
         setTheme(next);
+        document.documentElement.classList.toggle('dark', next === 'dark');
         try {
             localStorage.setItem('theme', next);
         } catch { /* noop */ }

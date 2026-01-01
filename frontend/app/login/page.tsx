@@ -45,6 +45,7 @@ export default function LoginPage() {
       const data = res.data;
       if (data?.token) {
         localStorage.setItem('token', data.token);
+        if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
         router.push('/chat');
       } else {
         setError('Login failed. Please check your credentials.');
@@ -64,6 +65,7 @@ export default function LoginPage() {
       const data = res.data;
       if (data?.token) {
         localStorage.setItem('token', data.token);
+        if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
         router.push('/chat');
       } else {
         setError('Google sign-in failed.');

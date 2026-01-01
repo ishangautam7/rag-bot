@@ -28,8 +28,21 @@ export default function RootLayout({
   const showNavbar = pathname === '/';
 
   return (
-    <html lang="en" className="scroll-smooth">
-      <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased bg-white text-gray-900 min-h-screen flex flex-col`}>
+    <html lang="en" className="scroll-smooth" suppressHydrationWarning>
+      <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased bg-[var(--color-background)] text-[var(--color-foreground)] min-h-screen flex flex-col`}>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                  document.documentElement.classList.add('dark')
+                } else {
+                  document.documentElement.classList.remove('dark')
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
         <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''}>
           {showNavbar && <Navbar />}
           <main className={`flex-grow ${showNavbar ? 'pt-16' : ''}`}>

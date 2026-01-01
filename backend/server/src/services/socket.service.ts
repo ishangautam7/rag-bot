@@ -1,6 +1,3 @@
-// Socket service for emitting real-time messages
-// Import io from server.js when needed
-
 let ioInstance: any = null;
 
 export const setSocketInstance = (io: any) => {
@@ -17,7 +14,6 @@ export const emitNewMessage = (sessionId: string, message: any) => {
             sessionId,
             message,
         });
-        console.log(`Emitted new-message to session ${sessionId}`);
     }
 };
 

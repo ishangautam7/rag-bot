@@ -20,165 +20,163 @@ model ApplicationLog {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  username  String?
-  
-  password  String?  
-  googleId  String?  @unique 
-  avatar    String?  
-  isAdmin   Boolean  @default(false)
-  
-  allowedModels String[] @default(["openrouter/auto"])
-  
+  id                String           @id @default(uuid())
+  email             String           @unique
+  username          String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  avatar            String?
+  googleId          String?          @unique
+  password          String?
+  isAdmin           Boolean          @default(false)
   resetToken        String?
   resetTokenExpires DateTime?
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  sessions       Session[]
-  memberships    SessionMember[]
-  sentMessages   Message[]
-  folders        Folder[]
-  activityLogs   ActivityLog[]
-  promptTemplates PromptTemplate[]
-  usageLogs      UsageLog[]
+  allowedModels     String[]         @default(["openrouter/auto"])
+  activityLogs      ActivityLog[]
+  folders           Folder[]
+  sentMessages      Message[]
+  promptTemplates   PromptTemplate[]
+  sessions          Session[]
+  memberships       SessionMember[]
+  usageLogs         UsageLog[]
+  refreshTokens     RefreshToken[]
 }
 
-// Chat organization folders
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
 model Folder {
   id        String    @id @default(uuid())
   name      String
   color     String    @default("#6b7280")
-  
   userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  sessions  Session[]
-  
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions  Session[]
+
   @@index([userId])
 }
 
 model Session {
-  id        String    @id @default(uuid())
-  title     String?   @default("New Chat") 
-  status    ChatStatus @default(ACTIVE)
-  
-  // Pinning & Organization
-  isPinned  Boolean   @default(false)
-  folderId  String?
-  folder    Folder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  
-  // Sharing
-  isPublic    Boolean   @default(false)
-  shareToken  String?   @unique
+  id          String          @id @default(uuid())
+  title       String?         @default("New Chat")
+  status      ChatStatus      @default(ACTIVE)
+  userId      String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  isGroupChat Boolean         @default(false)
+  isPublic    Boolean         @default(false)
+  shareToken  String?         @unique
   sharedAt    DateTime?
-  
-  // Group Chat
-  isGroupChat Boolean   @default(false)
-  
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  messages  Message[]
-  members   SessionMember[]
+  folderId    String?
+  isPinned    Boolean         @default(false)
+  messages    Message[]
+  folder      Folder?         @relation(fields: [folderId], references: [id])
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  members     SessionMember[]
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  
   @@index([userId])
   @@index([shareToken])
   @@index([folderId])
 }
 
 model SessionMember {
-  id        String   @id @default(uuid())
-  
+  id        String     @id @default(uuid())
   sessionId String
-  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
   role      MemberRole @default(MEMBER)
   joinedAt  DateTime   @default(now())
-  
+  session   Session    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([sessionId, userId])
   @@index([sessionId])
   @@index([userId])
 }
 
 model Message {
-  id        String   @id @default(uuid())
-  content   String   @db.Text 
-  role      Role    
-  
-  metadata  Json?    
-  
-  // Thread support (reply to message)
-  parentId  String?
-  parent    Message?  @relation("MessageThread", fields: [parentId], references: [id], onDelete: SetNull)
-  replies   Message[] @relation("MessageThread")
-  
-  // RAG source citations
-  sources   Json?
-  
-  // Response time metrics (ms)
+  id         String    @id @default(uuid())
+  content    String
+  role       Role
+  metadata   Json?
+  sessionId  String
+  createdAt  DateTime  @default(now())
+  senderId   String?
+  parentId   String?
   responseMs Int?
-  
-  sessionId String
-  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  
-  // Sender for group chats (null for AI messages)
-  senderId  String?
-  sender    User?    @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  sources    Json?
+  parent     Message?  @relation("MessageThread", fields: [parentId], references: [id])
+  replies    Message[] @relation("MessageThread")
+  sender     User?     @relation(fields: [senderId], references: [id])
+  session    Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
-  
   @@index([sessionId])
   @@index([senderId])
   @@index([parentId])
 }
 
-// User activity tracking
 model ActivityLog {
   id        String   @id @default(uuid())
-  
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  action    String   // LOGIN, LOGOUT, CREATE_CHAT, SEND_MESSAGE, DELETE_CHAT, etc.
-  details   Json?    // Additional context
+  action    String
+  details   Json?
   ipAddress String?
   userAgent String?
-  
   createdAt DateTime @default(now())
-  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([action])
   @@index([createdAt])
 }
 
-// Prompt templates
 model PromptTemplate {
-  id          String  @id @default(uuid())
+  id          String   @id @default(uuid())
   name        String
-  prompt      String  @db.Text
-  category    String  @default("general")
+  prompt      String
+  category    String   @default("general")
   description String?
-  
-  // null userId = system/default template
   userId      String?
-  user        User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
   createdAt   DateTime @default(now())
-  
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([category])
+}
+
+model UsageLog {
+  id               String   @id @default(uuid())
+  userId           String
+  date             String
+  freeMessageCount Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+}
+
+model Document {
+  id        Int       @id @default(autoincrement())
+  sessionId String?   @map("session_id") @db.VarChar
+  filename  String?   @db.VarChar
+  filePath  String?   @map("file_path") @db.VarChar
+  createdAt DateTime? @map("created_at") @db.Timestamp(6)
+
+  @@index([id], map: "ix_documents_id")
+  @@index([sessionId], map: "ix_documents_session_id")
+  @@map("documents")
 }
 
 enum Role {
@@ -196,20 +194,4 @@ enum ChatStatus {
 enum MemberRole {
   OWNER
   MEMBER
-}
-
-model UsageLog {
-  id        String   @id @default(uuid())
-  
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  date      String   
-  
-  freeMessageCount Int @default(0)
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  @@unique([userId, date])
-  @@index([userId])
 }

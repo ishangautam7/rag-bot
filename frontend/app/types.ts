@@ -3,5 +3,6 @@ export type Message = {
   content: string;
   timestamp: string;
   role: 'user' | 'assistant' | 'system';
+  attachments?: { name: string; type: string; url?: string }[];
 };
 

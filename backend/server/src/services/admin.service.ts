@@ -187,7 +187,6 @@ export const broadcastToUsers = async (
 
     // Check if email is configured
     if (!EMAIL_USER || !EMAIL_PASS) {
-        console.log('[DEV] Would send broadcast to:', users.map(u => u.email));
         return {
             message: 'Email not configured (dev mode)',
             sent: 0,

@@ -32,6 +32,31 @@ export const googleAuth = async (req: Request, res: Response): Promise<any> => {
   }
 };
 
+export const refresh = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(400).json({ error: 'Refresh token is required' });
+    }
+    const result = await authService.refreshToken(refreshToken);
+    res.json(result);
+  } catch (error: any) {
+    res.status(401).json({ error: error.message });
+  }
+};
+
+export const logout = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { refreshToken } = req.body;
+    if (refreshToken) {
+      await authService.revokeToken(refreshToken);
+    }
+    res.json({ message: 'Logged out successfully' });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Logout failed' });
+  }
+};
+
 export const getProfile = async (req: AuthRequest, res: Response): Promise<any> => {
   try {
     const userId = req.user!;
@@ -70,7 +95,6 @@ export const resetPassword = async (req: Request, res: Response): Promise<any> =
 
 export const broadcastEmail = async (req: AuthRequest, res: Response): Promise<any> => {
   try {
-    console.log(req.user);
     const userId = req.user!;
     const { subject, content } = req.body;
     if (!subject || !content) {
