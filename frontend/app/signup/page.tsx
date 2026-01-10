@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signup, googleAuth } from '@/app/lib/api';
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
+import { Layers } from 'lucide-react';
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -15,8 +16,6 @@ export default function SignupPage() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
 
   const validateEmail = (email: string) => {
@@ -53,7 +52,7 @@ export default function SignupPage() {
       if (data?.token) {
         localStorage.setItem('token', data.token);
         if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
-        router.push('/chat');
+        router.push('/dashboard');
       } else {
         setError('Signup failed');
       }
@@ -74,7 +73,7 @@ export default function SignupPage() {
       if (data?.token) {
         localStorage.setItem('token', data.token);
         if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
-        router.push('/chat');
+        router.push('/dashboard');
       } else {
         setError('Google sign-up failed.');
       }
@@ -86,157 +85,98 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-[var(--color-background)]">
-      <div className="w-full max-w-sm">
-        {/* Card */}
-        <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl p-6 shadow-sm">
-          {/* Header */}
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--color-secondary)] border border-[var(--color-border)] mb-4">
-              <svg className="w-6 h-6 text-[var(--color-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                <path d="M2 17l10 5 10-5" />
-                <path d="M2 12l10 5 10-5" />
-              </svg>
-            </div>
-            <h1 className="text-xl font-semibold text-[var(--color-foreground)] mb-1">Create account</h1>
-            <p className="text-sm text-[var(--color-foreground-muted)]">Sign up to get started.</p>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-[#050505] relative overflow-hidden">
+      {/* Background Grid */}
+      <div className="absolute inset-0 bg-grid-pattern opacity-[0.1] pointer-events-none"></div>
+
+      <div className="w-full max-w-sm z-10">
+
+        <div className="text-center mb-10">
+          <Link href="/" className="inline-flex items-center gap-2 mb-6">
+            <Layers className="w-6 h-6 text-white" />
+            <span className="text-xl font-bold tracking-tight text-white">NexusAI</span>
+          </Link>
+          <h1 className="text-2xl font-light text-white mb-2">Create Account</h1>
+          <p className="text-sm text-[#888]">Join the intelligent automation platform.</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1">
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              placeholder="Full Name"
+              className="w-full bg-[#111] border border-[#222] rounded-lg px-4 py-3 text-sm text-white placeholder-[#444] focus:outline-none focus:border-white transition-colors"
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              placeholder="name@company.com"
+              className="w-full bg-[#111] border border-[#222] rounded-lg px-4 py-3 text-sm text-white placeholder-[#444] focus:outline-none focus:border-white transition-colors"
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleInputChange}
+              placeholder="Password (min 8 chars)"
+              className="w-full bg-[#111] border border-[#222] rounded-lg px-4 py-3 text-sm text-white placeholder-[#444] focus:outline-none focus:border-white transition-colors"
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <input
+              type="password"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleInputChange}
+              placeholder="Confirm Password"
+              className="w-full bg-[#111] border border-[#222] rounded-lg px-4 py-3 text-sm text-white placeholder-[#444] focus:outline-none focus:border-white transition-colors"
+              required
+            />
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name */}
-            <div>
-              <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
-                Full Name
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                placeholder="John Doe"
-                className="w-full bg-[var(--color-input)] border border-[var(--color-input-border)] rounded-lg py-2.5 px-3 text-sm text-[var(--color-foreground)] placeholder-[var(--color-foreground-muted)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/10 transition-all"
-                required
-              />
+          {error && (
+            <div className="p-3 rounded-lg bg-red-900/20 border border-red-900/40 text-red-400 text-xs text-center">
+              {error}
             </div>
+          )}
 
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
-                Email Address
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                placeholder="you@example.com"
-                className="w-full bg-[var(--color-input)] border border-[var(--color-input-border)] rounded-lg py-2.5 px-3 text-sm text-[var(--color-foreground)] placeholder-[var(--color-foreground-muted)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/10 transition-all"
-                required
-              />
-            </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-white text-black font-semibold rounded-lg py-3 text-sm hover:bg-[#DDD] transition-colors disabled:opacity-50"
+          >
+            {loading ? 'Creating Account...' : 'Sign Up'}
+          </button>
+        </form>
 
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  placeholder="Min. 8 characters"
-                  className="w-full bg-[var(--color-input)] border border-[var(--color-input-border)] rounded-lg py-2.5 px-3 pr-10 text-sm text-[var(--color-foreground)] placeholder-[var(--color-foreground-muted)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/10 transition-all"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)] transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
-                Confirm Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  placeholder="Confirm your password"
-                  className="w-full bg-[var(--color-input)] border border-[var(--color-input-border)] rounded-lg py-2.5 px-3 pr-10 text-sm text-[var(--color-foreground)] placeholder-[var(--color-foreground-muted)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/10 transition-all"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)] transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Error */}
-            {error && (
-              <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/30">
-                <p className="text-red-700 text-xs">{error}</p>
-              </div>
-            )}
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 bg-[var(--color-primary)] text-white font-medium rounded-lg text-sm transition-colors hover:bg-[var(--color-primary-dark)] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Creating account...' : 'Create Account'}
-            </button>
-          </form>
-
-          {/* Divider */}
-          <div className="my-5 flex items-center">
-            <div className="flex-1 border-t border-[var(--color-border)]"></div>
-            <span className="px-3 text-xs text-[var(--color-foreground-muted)]">OR</span>
-            <div className="flex-1 border-t border-[var(--color-border)]"></div>
+        <div className="mt-8 pt-8 border-t border-[#1F1F1F]">
+          <div className="mb-6">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setError('Google sign-up failed')}
+              theme="filled_black"
+              shape="pill"
+              size="large"
+              width="100%"
+              text="continue_with"
+            />
           </div>
 
-          {/* Social */}
-          <div className="space-y-2 w-full">
-            <div className="w-full">
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={() => setError('Google sign-up failed')}
-                theme="outline"
-                size="large"
-                width="100%"
-                text="continue_with"
-                containerProps={{ style: { width: '100%' } }}
-              />
-            </div>
-          </div>
-
-          {/* Footer */}
-          <p className="text-center text-[var(--color-foreground-muted)] text-sm mt-5">
+          <p className="text-center text-xs text-[#666]">
             Already have an account?{' '}
-            <Link href="/login" className="text-[var(--color-primary)] hover:underline font-medium">
-              Sign in
-            </Link>
+            <Link href="/login" className="text-white hover:underline">Sign in</Link>
           </p>
         </div>
       </div>

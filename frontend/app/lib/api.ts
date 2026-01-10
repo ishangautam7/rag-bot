@@ -289,4 +289,7 @@ export const adminGetActivity = (params?: { userId?: string; action?: string; li
 export const adminGetMetrics = (days?: number) =>
   api.get<ResponseMetrics>('/admin/metrics', { params: { days } });
 
+export const submitContact = (data: { firstName: string; lastName: string; email: string; message: string }) =>
+  api.post<{ success: boolean; message: string }>('/contact', data);
+
 export default api;

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { login, googleAuth } from '@/app/lib/api';
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
+import { Layers } from 'lucide-react';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -13,7 +14,6 @@ export default function LoginPage() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
   const validateEmail = (email: string) => {
@@ -46,7 +46,7 @@ export default function LoginPage() {
       if (data?.token) {
         localStorage.setItem('token', data.token);
         if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
-        router.push('/chat');
+        router.push('/chat'); // Redirect to chat as default
       } else {
         setError('Login failed. Please check your credentials.');
       }
@@ -78,121 +78,76 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-[var(--color-background)]">
-      <div className="w-full max-w-sm">
-        {/* Card */}
-        <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl p-6 shadow-sm">
-          {/* Header */}
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--color-secondary)] border border-[var(--color-border)] mb-4">
-              <svg className="w-6 h-6 text-[var(--color-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                <path d="M2 17l10 5 10-5" />
-                <path d="M2 12l10 5 10-5" />
-              </svg>
-            </div>
-            <h1 className="text-xl font-semibold text-[var(--color-foreground)] mb-1">Welcome back</h1>
-            <p className="text-sm text-[var(--color-foreground-muted)]">Please enter your details to login.</p>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-[#050505] relative overflow-hidden">
+      {/* Background Grid */}
+      <div className="absolute inset-0 bg-grid-pattern opacity-[0.1] pointer-events-none"></div>
+
+      <div className="w-full max-w-sm z-10">
+
+        <div className="text-center mb-10">
+          <Link href="/" className="inline-flex items-center gap-2 mb-6">
+            <Layers className="w-6 h-6 text-white" />
+            <span className="text-xl font-bold tracking-tight text-white">NexusAI</span>
+          </Link>
+          <h1 className="text-2xl font-light text-white mb-2">Welcome Back</h1>
+          <p className="text-sm text-[#888]">Enter your credentials to access the studio.</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1">
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              placeholder="name@company.com"
+              className="w-full bg-[#111] border border-[#222] rounded-lg px-4 py-3 text-sm text-white placeholder-[#444] focus:outline-none focus:border-white transition-colors"
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleInputChange}
+              placeholder="Password"
+              className="w-full bg-[#111] border border-[#222] rounded-lg px-4 py-3 text-sm text-white placeholder-[#444] focus:outline-none focus:border-white transition-colors"
+              required
+            />
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
-                Email Address
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                placeholder="you@example.com"
-                className="w-full bg-[var(--color-input)] border border-[var(--color-input-border)] rounded-lg py-2.5 px-3 text-sm text-[var(--color-foreground)] placeholder-[var(--color-foreground-muted)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/10 transition-all"
-                required
-              />
+          {error && (
+            <div className="p-3 rounded-lg bg-red-900/20 border border-red-900/40 text-red-400 text-xs text-center">
+              {error}
             </div>
+          )}
 
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  placeholder="Enter your password"
-                  className="w-full bg-[var(--color-input)] border border-[var(--color-input-border)] rounded-lg py-2.5 px-3 pr-10 text-sm text-[var(--color-foreground)] placeholder-[var(--color-foreground-muted)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/10 transition-all"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)] transition-colors"
-                >
-                  {showPassword ? (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                    </svg>
-                  ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-              <div className="mt-1.5 text-right">
-                <Link href="/forgot-password" className="text-xs text-[var(--color-foreground-muted)] hover:text-[var(--color-primary)] transition-colors">
-                  Forgot password? Reset password
-                </Link>
-              </div>
-            </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-white text-black font-semibold rounded-lg py-3 text-sm hover:bg-[#DDD] transition-colors disabled:opacity-50"
+          >
+            {loading ? 'Authenticating...' : 'Sign In'}
+          </button>
+        </form>
 
-            {/* Error */}
-            {error && (
-              <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/30">
-                <p className="text-red-700 text-xs">{error}</p>
-              </div>
-            )}
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 bg-[var(--color-primary)] text-white font-medium rounded-lg text-sm transition-colors hover:bg-[var(--color-primary-dark)] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Signing in...' : 'Login'}
-            </button>
-          </form>
-
-          {/* Divider */}
-          <div className="my-5 flex items-center">
-            <div className="flex-1 border-t border-[var(--color-border)]"></div>
-            <span className="px-3 text-xs text-[var(--color-foreground-muted)]">OR</span>
-            <div className="flex-1 border-t border-[var(--color-border)]"></div>
-          </div>
-
-          {/* Social Logins */}
-          <div className="space-y-2">
+        <div className="mt-8 pt-8 border-t border-[#1F1F1F]">
+          <div className="mb-6">
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
               onError={() => setError('Google sign-in failed')}
-              theme="outline"
+              theme="filled_black"
+              shape="pill"
               size="large"
               width="100%"
               text="continue_with"
             />
           </div>
 
-          {/* Footer */}
-          <p className="text-center text-[var(--color-foreground-muted)] text-sm mt-5">
-            Don&apos;t have account?{' '}
-            <Link href="/signup" className="text-[var(--color-primary)] hover:underline font-medium">
-              Register now
-            </Link>
+          <p className="text-center text-xs text-[#666]">
+            Don't have an account?{' '}
+            <Link href="/signup" className="text-white hover:underline">Create one</Link>
           </p>
         </div>
       </div>
