@@ -17,6 +17,8 @@ export default function ChatPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
   const { remaining, isFreeModel, refreshUsage, canSendFreeMessage } = useFreeMessageLimit();
+  const [files, setFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const savedModel = localStorage.getItem('selectedModel');
@@ -65,8 +67,19 @@ export default function ChatPage() {
     }
   };
 
+  const handleFileSelect = (selectedFiles: FileList | null) => {
+    if (!selectedFiles) return;
+    const newFiles = Array.from(selectedFiles);
+    setFiles(prev => [...prev, ...newFiles]);
+  };
+
+  const removeFile = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSend = async () => {
-    if (!message.trim() || loading) return;
+    const hasFiles = files.length > 0;
+    if ((!message.trim() && !hasFiles) || loading) return;
 
     // Check free model limit
     if (isFreeModel(selectedModel) && !canSendFreeMessage()) {
@@ -78,10 +91,48 @@ export default function ChatPage() {
     try {
       const apiKey = getApiKey();
       const apiEndpoint = getApiEndpoint();
-      const res = await createSession(message, selectedModel, apiKey, apiEndpoint);
-      const data = res.data as any;
-      const sessionId = data?.session?.id || data?.id;
-      if (sessionId) {
+
+      let sessionId: string;
+
+      if (hasFiles) {
+        // 1. Create empty session first
+        const { createSession, uploadFile, sendMessage } = await import('@/app/lib/api');
+        const res = await createSession('', selectedModel, apiKey, apiEndpoint);
+        const data = res.data as any;
+        sessionId = data?.session?.id || data?.id;
+
+        if (sessionId) {
+          // 2. Upload files
+          const uploadedFiles = [];
+          for (const file of files) {
+            try {
+              const uploadRes = await uploadFile(file, sessionId);
+              if (uploadRes.data && uploadRes.data.file) {
+                uploadedFiles.push({
+                  name: file.name,
+                  type: file.type,
+                  url: `http://localhost:4000/api/chat/files/${uploadRes.data.file.filename}`
+                });
+              }
+            } catch (err) {
+              console.error('Failed to upload file:', file.name, err);
+            }
+          }
+
+          // 3. Send message with attachments
+          if (message.trim()) {
+            await sendMessage(sessionId, message, selectedModel, apiKey, apiEndpoint, uploadedFiles);
+          }
+        }
+      } else {
+        // Original flow for text only
+        const { createSession } = await import('@/app/lib/api');
+        const res = await createSession(message, selectedModel, apiKey, apiEndpoint);
+        const data = res.data as any;
+        sessionId = data?.session?.id || data?.id;
+      }
+
+      if (sessionId!) {
         // Refresh usage if free model
         if (isFreeModel(selectedModel)) {
           refreshUsage();
@@ -200,6 +251,25 @@ export default function ChatPage() {
           {/* Input Box */}
           <div className="bg-[var(--color-card-solid)] border border-[var(--color-border)] rounded-xl p-2 focus-within:border-[var(--color-primary)] focus-within:ring-2 focus-within:ring-[var(--color-primary)]/10 transition-colors">
             {/* Label */}
+            {/* File Previews */}
+            {files.length > 0 && (
+              <div className="flex gap-2 px-2 pb-2 flex-wrap">
+                {files.map((file, i) => (
+                  <div key={i} className="flex items-center gap-2 px-2 py-1 bg-[var(--color-secondary)] rounded-md border border-[var(--color-border)] text-xs">
+                    <span className="text-[var(--color-foreground)] truncate max-w-[100px]">{file.name}</span>
+                    <button
+                      onClick={() => removeFile(i)}
+                      className="text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)]"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="flex items-center gap-2 px-2 mb-2">
               <span className="text-[var(--color-primary)] text-xs flex items-center gap-1"><SparkleIcon size={10} /> THE MESSAGE</span>
             </div>
@@ -217,6 +287,21 @@ export default function ChatPage() {
             {/* Bottom Row */}
             <div className="flex items-center justify-between mt-2 pt-2 border-t border-[var(--color-border)]">
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-1.5 text-[var(--color-foreground-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-secondary)] rounded-lg transition-colors"
+                  title="Attach files"
+                >
+                  <PaperclipIcon size={16} />
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  onChange={(e) => handleFileSelect(e.target.files)}
+                  className="hidden"
+                />
+
                 <ModelSelector
                   selectedModel={selectedModel}
                   onModelChange={handleModelChange}
@@ -226,7 +311,7 @@ export default function ChatPage() {
 
               <button
                 onClick={handleSend}
-                disabled={!message.trim() || loading}
+                disabled={(!message.trim() && files.length === 0) || loading}
                 className="px-4 py-1.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
               >
                 {loading ? '...' : 'Send'}

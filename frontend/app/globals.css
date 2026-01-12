@@ -2,28 +2,60 @@
 
 /* ===== THEME SETUP ===== */
 :root {
-  /* FORCED DARK MODE */
-  --color-background: #050505;
-  --color-background-secondary: #0A0A0A;
-  --color-foreground: #EDEDED;
-  --color-foreground-muted: #888888;
-  --color-foreground-dim: #444444;
+  /* LIGHT MODE (Default) */
+  --color-background: #FFFFFF;
+  --color-background-secondary: #F9FAFB; /* Gray 50 */
+  --color-card: #FFFFFF;
+  --color-card-solid: #FFFFFF;
+  
+  --color-foreground: #111827; /* Gray 900 */
+  --color-foreground-muted: #6B7280; /* Gray 500 */
+  --color-foreground-dim: #374151; /* Gray 700 */
 
   /* Accents */
-  --color-primary: #EDEDED;
-  --color-primary-foreground: #000000;
-
-  --color-accent: #333333;
-  --color-accent-foreground: #FFFFFF;
+  --color-primary: #111827; /* Black/Dark Gray for primary actions in light mode */
+  --color-primary-dark: #000000;
+  --color-primary-foreground: #FFFFFF;
+  
+  --color-secondary: #F3F4F6; /* Gray 100 */
+  
+  --color-accent: #E5E7EB;
+  --color-accent-foreground: #111827;
 
   /* Borders & Dividers */
-  --color-border: #1F1F1F;
-  --color-border-subtle: #111111;
+  --color-border: #E5E7EB; /* Gray 200 */
+  --color-border-strong: #D1D5DB; /* Gray 300 */
+  --color-border-subtle: #F3F4F6;
 
   /* Spacing & Layout */
   --radius-sm: 0.25rem;
   --radius: 0.5rem;
   --radius-lg: 1rem;
+}
+
+/* Optional: Keep dark mode if the user sets it, or for the landing page if it uses it */
+.dark {
+  --color-background: #050505;
+  --color-background-secondary: #0A0A0A;
+  --color-card: #0A0A0A;
+  --color-card-solid: #0A0A0A;
+  
+  --color-foreground: #EDEDED;
+  --color-foreground-muted: #888888;
+  --color-foreground-dim: #444444;
+
+  --color-primary: #EDEDED;
+  --color-primary-dark: #FFFFFF;
+  --color-primary-foreground: #000000;
+  
+  --color-secondary: #1A1A1A;
+  
+  --color-accent: #333333;
+  --color-accent-foreground: #FFFFFF;
+
+  --color-border: #1F1F1F;
+  --color-border-strong: #333333;
+  --color-border-subtle: #111111;
 }
 
 /* ===== BASE STYLES ===== */

@@ -14,11 +14,14 @@ import usageRoutes from "./src/routes/usage.route.ts";
 import adminRoutes from "./src/routes/admin.routes.ts";
 import contactRoutes from "./src/routes/contact.routes.ts";
 import { getSharedChat } from "./src/controller/share.controller.ts";
-import { setSocketInstance } from "./src/services/socket.service.ts";
 
 const app = express();
-// ... (lines 19-66 unchanged)
 
+app.use(express.json());
+app.use(cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+}))
 app.get('/api/shared/:token', getSharedChat);
 
 app.use('/api/auth', authRoutes);
@@ -30,12 +33,20 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/contact', contactRoutes);
 
 
-import folderRoutes from './src/routes/folder.routes.js';
-import templateRoutes from './src/routes/template.routes.js';
+import folderRoutes from './src/routes/folder.routes.ts';
+import templateRoutes from './src/routes/template.routes.ts';
 app.use('/api/folders', folderRoutes);
 app.use('/api/templates', templateRoutes);
 
 // app.use('/uploads', express.static('uploads'));
+
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
 
 httpServer.listen(4000, () => {
     console.log("Server is running on port 4000 with WebSocket support");

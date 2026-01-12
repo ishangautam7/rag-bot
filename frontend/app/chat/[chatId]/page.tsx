@@ -85,8 +85,8 @@ export default function ChatPage() {
           content: m.content,
           timestamp: m.createdAt!,
           role: m.role.toLowerCase() as Message['role'],
+          attachments: m.attachments,
         }));
-        // Track processed message IDs
         mapped.forEach(m => processedMessageIds.current.add(m.id));
         setMessages(mapped);
 
@@ -115,7 +115,6 @@ export default function ChatPage() {
   const handleSendMessage = async (content: string, _files?: File[], model?: string, apiKey?: string, apiEndpoint?: string, uploadedFiles?: { name: string; url: string; type: string }[]) => {
     if (!chatId) return;
 
-    // Don't send if no content (files are uploaded separately)
     if (!content.trim()) return;
 
     const userMessage: Message = {
@@ -175,33 +174,7 @@ export default function ChatPage() {
         <ExportButton sessionId={chatId} />
       </div>
 
-      {/* Context Files - Pinned to top */}
-      {documents.length > 0 && (
-        <div className="w-full bg-[var(--color-background)] border-b border-[var(--color-border)] px-4 py-2 z-10 shrink-0">
-          <div className="max-w-3xl mx-auto">
-            <h4 className="text-[10px] font-medium text-[var(--color-foreground-muted)] mb-2 uppercase tracking-wider flex items-center gap-2">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
-              Context Files ({documents.length})
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {documents.map((doc) => (
-                <a
-                  key={doc.id}
-                  href={`http://localhost:4000/api/chat/files/${doc.filename}?token=${typeof window !== 'undefined' ? localStorage.getItem('token') : ''}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-2 py-1.5 bg-[var(--color-card)] border border-[var(--color-border)] rounded-md hover:bg-[var(--color-secondary)] hover:border-[var(--color-primary)] transition-all group no-underline"
-                >
-                  <div className="w-5 h-5 rounded bg-[var(--color-secondary)] flex items-center justify-center text-[var(--color-primary)] shrink-0">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                  </div>
-                  <span className="text-xs font-medium text-[var(--color-foreground)] truncate max-w-[150px]" title={doc.filename}>{doc.filename}</span>
-                </a>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Messages Container */}
       <div

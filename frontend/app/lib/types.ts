@@ -18,6 +18,7 @@ export type Message = {
   content: string;
   role: 'USER' | 'ASSISTANT' | 'SYSTEM';
   createdAt?: string;
+  attachments?: { name: string; type: string; url?: string }[];
 };
 
 export type Session = {

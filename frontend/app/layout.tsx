@@ -43,6 +43,7 @@ export default function RootLayout({
             `,
           }}
         />
+
         <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''}>
           {showNavbar && <Navbar />}
           <main className={`flex-grow ${showNavbar ? 'pt-16' : ''}`}>

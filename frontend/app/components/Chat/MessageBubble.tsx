@@ -18,8 +18,9 @@ export default function MessageBubble({ message, isUser }: MessageBubbleProps) {
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''} animate-slide-up`}>
       {/* Avatar */}
+      {/* Avatar */}
       <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-medium ${isUser
-        ? 'bg-[var(--color-primary)] text-white'
+        ? 'bg-[var(--color-secondary)] text-[var(--color-foreground)] border border-[var(--color-border)]'
         : 'bg-[var(--color-secondary)] text-[var(--color-foreground)]'
         }`}>
         {isUser ? 'U' : (
@@ -34,7 +35,7 @@ export default function MessageBubble({ message, isUser }: MessageBubbleProps) {
       {/* Message Content */}
       <div className={`max-w-[85%] md:max-w-[70%] ${isUser ? 'text-right' : ''}`}>
         <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${isUser
-          ? 'bg-[var(--color-primary)] text-white rounded-tr-md'
+          ? 'bg-[var(--color-secondary)] text-[var(--color-foreground)] rounded-tr-md border border-[var(--color-border)]'
           : 'bg-[var(--color-secondary)] text-[var(--color-foreground)] rounded-tl-md shadow-sm'
           }`}>
           {message.attachments && message.attachments.length > 0 && (
@@ -42,16 +43,16 @@ export default function MessageBubble({ message, isUser }: MessageBubbleProps) {
               {message.attachments.map((file, i) => (
                 <a
                   key={i}
-                  href={file.url || '#'}
+                  href={`${file.url}${file.url?.includes('localhost:4000') || file.url?.includes('/api/') ? `?token=${typeof window !== 'undefined' ? localStorage.getItem('token') : ''}` : ''}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`flex items-center gap-3 px-3 py-2 rounded-xl border max-w-full transition-colors hover:opacity-80 ${isUser
-                    ? 'bg-white/10 border-white/20 text-white'
+                    ? 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-foreground)]'
                     : 'bg-[var(--color-card)] border-[var(--color-border)] text-[var(--color-foreground)]'
                     }`}
                   onClick={(e) => !file.url && e.preventDefault()}
                 >
-                  <div className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${isUser ? 'bg-white/20' : 'bg-[var(--color-secondary)] text-[var(--color-primary)]'
+                  <div className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${isUser ? 'bg-[var(--color-secondary)] text-[var(--color-primary)]' : 'bg-[var(--color-secondary)] text-[var(--color-primary)]'
                     }`}>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -59,7 +60,7 @@ export default function MessageBubble({ message, isUser }: MessageBubbleProps) {
                   </div>
                   <div className="flex flex-col min-w-0 pr-1">
                     <span className="truncate text-xs font-semibold">{file.name}</span>
-                    <span className={`text-[10px] uppercase tracking-wide ${isUser ? 'text-white/70' : 'text-[var(--color-foreground-muted)]'
+                    <span className={`text-[10px] uppercase tracking-wide ${isUser ? 'text-[var(--color-foreground-muted)]' : 'text-[var(--color-foreground-muted)]'
                       }`}>
                       {file.type ? file.type.split('/')[1] : 'FILE'}
                     </span>

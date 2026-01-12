@@ -7,7 +7,6 @@ import fs from 'fs';
 
 const router = Router();
 
-// Directory for uploading files
 const uploadDir = path.resolve(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
@@ -30,6 +29,5 @@ router.get('/files/:filename', protect, messageController.getFile);
 
 
 router.post('/upload', upload.single('file'), protect, messageController.uploadFile);
-
 
 export default router;
