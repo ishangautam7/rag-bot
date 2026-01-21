@@ -7,7 +7,7 @@ import authRoutes from "./src/routes/auth.routes.ts";
 import chatRoutes from "./src/routes/chat.routes.ts";
 // import sessionRoutes from "./src/routes/session.routes.ts";
 // import messageRoutes from "./src/routes/message.routes.ts";
-import fileRoutes from "./src/routes/file.routes.ts";
+// import fileRoutes from "./src/routes/file.routes.ts";
 // import shareRoutes from "./src/routes/share.routes.ts";
 // import groupRoutes from "./src/routes/group.routes.ts";
 import settingsRoutes from './src/routes/settings.routes.ts';
@@ -20,7 +20,7 @@ const app = express();
 
 app.use(express.json());
 app.use(cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: "http://localhost:3000",
     credentials: true,
 }))
 app.get('/api/shared/:token', getSharedChat);
@@ -40,7 +40,6 @@ import folderRoutes from './src/routes/folder.routes.ts';
 import templateRoutes from './src/routes/template.routes.ts';
 app.use('/api/folders', folderRoutes);
 app.use('/api/templates', templateRoutes);
-app.use('/api/files', fileRoutes);
 
 // app.use('/uploads', express.static('uploads'));
 

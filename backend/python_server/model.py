@@ -1,9 +1,103 @@
 import os
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+
 from services import llm_service
 
 load_dotenv()
+
+async def get_llm(
+    model_name: str,
+    api_key: Optional[str] = None,
+    api_endpoint: Optional[str] = None,
+    temperature: float = 0.7
+):
+    """
+    Factory to create the appropriate LangChain chat model.
+    Handles API key resolution including Admin keys for free models.
+    """
+    final_api_key = api_key
+    
+    # 1. Resolve API Key if not provided
+    if not final_api_key:
+        # Check Custom Endpoint first
+        if api_endpoint:
+             final_api_key = os.getenv("OPENROUTER_API_KEY") # Default for custom generic
+        
+        # Check Free Models (OpenRouter)
+        elif llm_service.is_free_model(model_name):
+            try:
+                from settings_client import get_admin_openrouter_key
+                final_api_key = await get_admin_openrouter_key()
+            except ImportError:
+                pass
+            
+            if not final_api_key:
+                final_api_key = os.getenv("OPENROUTER_API_KEY")
+                
+            if not final_api_key:
+                 raise ValueError("OpenRouter API key not configured. Please contact administrator.")
+        
+        # Check GPT
+        elif model_name.startswith("gpt"):
+             final_api_key = os.getenv("OPENAI_API_KEY")
+             if not final_api_key:
+                raise ValueError("OpenAI API key required. Add it in Settings.")
+
+        # Check Gemini
+        elif model_name.startswith("gemini"):
+             final_api_key = os.getenv("GOOGLE_API_KEY")
+             if not final_api_key:
+                raise ValueError("Google API key required. Add it in Settings.")
+        
+        # Fallback (OpenRouter/Custom)
+        else:
+             try:
+                from settings_client import get_admin_openrouter_key
+                final_api_key = await get_admin_openrouter_key()
+             except:
+                 pass
+             if not final_api_key:
+                final_api_key = os.getenv("OPENROUTER_API_KEY")
+
+    # 2. Return LangChain Object
+    
+    # Custom Endpoint / OpenRouter
+    if api_endpoint or (not model_name.startswith("gpt") and not model_name.startswith("gemini")):
+        base_url = api_endpoint if api_endpoint else "https://openrouter.ai/api/v1"
+        return ChatOpenAI(
+            model=model_name,
+            api_key=final_api_key,
+            base_url=base_url,
+            temperature=temperature,
+            default_headers={
+                "HTTP-Referer": "https://rag-chat.app",
+                "X-Title": "RAG Chat"
+            }
+        )
+
+    # Google Gemini
+    if model_name.startswith("gemini"):
+        return ChatGoogleGenerativeAI(
+            model=model_name,
+            google_api_key=final_api_key,
+            temperature=temperature,
+            convert_system_message_to_human=True,
+            transport="rest"
+        )
+    
+    # OpenAI Native
+    if model_name.startswith("gpt"):
+        return ChatOpenAI(
+            model=model_name,
+            api_key=final_api_key,
+            temperature=temperature
+        )
+        
+    raise ValueError(f"Unsupported model: {model_name}")
 
 async def call_model(
     model_name: str,
@@ -13,88 +107,25 @@ async def call_model(
     temperature: float = 0.7
 ) -> str:
     """
-    Centralized function to call any AI model.
-    Routes to the appropriate service based on configuration.
-    
-    Two-tier access:
-    1. If user provides api_key → Use their key (no restrictions)
-    2. If no api_key → Use admin key (requires permission check in chat_service)
-    
-    Args:
-        model_name: Name of the model to use
-        messages: List of message dicts with 'role' and 'content'
-        api_key: Optional API key from user (if provided, bypasses admin key)
-        api_endpoint: Optional custom endpoint URL
-        temperature: Temperature for generation (default 0.7)
-    
-    Returns:
-        AI response text
-    
-    Raises:
-        ValueError: If required API key is missing
-        Exception: If API call fails
+    Centralized function to call any AI model using LangChain.
     """
-    try:
-        from settings_client import get_admin_openrouter_key
-    except ImportError:
-        async def get_admin_openrouter_key(): return None
+    llm = await get_llm(model_name, api_key, api_endpoint, temperature)
     
-    
-    # 1. Custom Endpoint
-    if api_endpoint:
-        return await llm_service.call_custom_endpoint(
-            api_endpoint, model_name, messages, api_key
-        )
-    
-    # 2. Free Models (OpenRouter) - use admin key if user didn't provide one
-    if llm_service.is_free_model(model_name):
-        # User provided their own key - use it directly
-        if api_key:
-            return await llm_service.call_openrouter(model_name, messages, api_key)
-        
-        # No user key - try to fetch admin key
-        admin_key = await get_admin_openrouter_key()
-        if admin_key:
-            return await llm_service.call_openrouter(model_name, messages, admin_key)
-        
-        # Fallback to env var (backward compatibility)
-        env_key = os.getenv("OPENROUTER_API_KEY")
-        if env_key:
-            return await llm_service.call_openrouter(model_name, messages, env_key)
-        
-        raise ValueError("OpenRouter API key not configured by admin. Please contact administrator.")
-    
-    # 3. GPT Models (OpenAI) - user key or env var
-    if model_name.startswith("gpt"):
-        final_api_key = api_key or os.getenv("OPENAI_API_KEY")
-        if not final_api_key:
-            raise ValueError("OpenAI API key required for GPT models. Add it in Settings.")
-        return await llm_service.call_openai(model_name, messages, final_api_key)
-    
-    # 4. Gemini Models (Google) - user key or env var
-    if model_name.startswith("gemini"):
-        final_api_key = api_key or os.getenv("GOOGLE_API_KEY")
-        if not final_api_key:
-            raise ValueError("Google API key required for Gemini models. Add it in Settings.")
-        return await llm_service.call_google_gemini(model_name, messages, final_api_key)
-    
-    # 5. Fallback -> OpenRouter with admin key
-    if api_key:
-        return await llm_service.call_openrouter(model_name, messages, api_key)
-    
-    admin_key = await get_admin_openrouter_key()
-    if admin_key:
-        return await llm_service.call_openrouter(model_name, messages, admin_key)
-    
-    env_key = os.getenv("OPENROUTER_API_KEY")
-    if env_key:
-        return await llm_service.call_openrouter(model_name, messages, env_key)
-    
-    raise ValueError("OpenRouter API key not configured. Please contact administrator.")
+    # Convert dict messages to LangChain messages
+    lc_messages = []
+    for msg in messages:
+        if msg['role'] == 'system':
+            lc_messages.append(SystemMessage(content=msg['content']))
+        elif msg['role'] == 'user':
+            lc_messages.append(HumanMessage(content=msg['content']))
+        elif msg['role'] == 'assistant':
+            lc_messages.append(AIMessage(content=msg['content']))
+            
+    response = await llm.ainvoke(lc_messages)
+    return response.content
 
-
+# Keep helpers
 def is_free_model(model_name: str) -> bool:
-    """Check if a model is free (via OpenRouter)."""
     return llm_service.is_free_model(model_name)
 
 async def get_completion(
@@ -104,19 +135,6 @@ async def get_completion(
     api_key: Optional[str] = None,
     api_endpoint: Optional[str] = None
 ) -> str:
-    """
-    Get a simple completion for a prompt.
-    
-    Args:
-        prompt: User prompt
-        model_name: Model to use
-        system_message: Optional system message
-        api_key: Optional API key
-        api_endpoint: Optional custom endpoint
-    
-    Returns:
-        AI response text
-    """
     messages = []
     if system_message:
         messages.append({"role": "system", "content": system_message})

@@ -58,7 +58,7 @@ async def process_pdf_endpoint(
     
     Returns the modified PDF file.
     """
-    from agent import process_pdf
+    from agent import run_agent
     import tempfile
     
     try:
@@ -68,27 +68,44 @@ async def process_pdf_endpoint(
             tmp_file.write(content)
             tmp_file_path = tmp_file.name
         
-        # Process the PDF
-        result = await process_pdf(
-            file_path=tmp_file_path,
-            instruction=instruction,
+        # Construct message for agent
+        msg = f"Edit this file: {instruction}" if instruction else "Improve this file."
+        
+        # Run Agent
+        result = await run_agent(
+            message=msg,
             model_name=model_name,
-            api_key=api_key
+            api_key=api_key,
+            latest_file=tmp_file_path
         )
         
         # Clean up input file
-        os.unlink(tmp_file_path)
+        try:
+            os.unlink(tmp_file_path)
+        except:
+            pass
         
-        if result["success"]:
-            # Return the modified PDF
-            return FileResponse(
-                result["output_file"],
-                media_type="application/pdf",
-                filename=f"modified_{file.filename}",
-                background=lambda: os.unlink(result["output_file"]) if os.path.exists(result["output_file"]) else None
-            )
-        else:
-            raise HTTPException(status_code=500, detail=result["summary"])
+        # Check result
+        if result["attachments"]:
+            # Get the file path from attachment URL/name logic
+            # run_agent returns attachments with URLs, but we need the local path.
+            # We know run_agent tools save to UPLOAD_FOLDER
+            att = result["attachments"][0]
+            filename = att["name"]
+            
+            # We need to find where tools save files. 
+            # In tools.py, write_html_to_pdf saves to services.rag_service.UPLOAD_FOLDER
+            from services import rag_service
+            output_path = os.path.join(rag_service.UPLOAD_FOLDER, filename)
+            
+            if os.path.exists(output_path):
+                 return FileResponse(
+                    output_path,
+                    media_type="application/pdf",
+                    filename=f"modified_{file.filename}"
+                )
+        
+        raise HTTPException(status_code=500, detail=result.get("response", "Processing failed"))
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing PDF: {str(e)}")

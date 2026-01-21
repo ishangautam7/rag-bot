@@ -147,7 +147,7 @@ export default function ModelSelector({ selectedModel, onModelChange, compact = 
         const userHasApiKey = hasApiKey(model);
         const adminGrantedPermission = userAllowedModels.includes(model.id);
 
-        return userHasApiKey || adminGrantedPermission;
+        return userHasApiKey || adminGrantedPermission || model.provider === 'custom';
     });
 
     const currentModel = selectedModel ? availableModels.find(m => m.id === selectedModel) : null;
@@ -245,7 +245,7 @@ export default function ModelSelector({ selectedModel, onModelChange, compact = 
                                         {hasApiKey(model) ? (
                                             <span className="text-xs px-1.5 py-0.5 bg-green-500/20 text-green-600 rounded">Key Set</span>
                                         ) : (
-                                            <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-700 rounded">Need Key</span>
+                                            <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-700 rounded">{model.provider === 'custom' ? '' : 'Need Key'}</span>
                                         )}
                                     </button>
                                 );

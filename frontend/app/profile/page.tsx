@@ -557,7 +557,7 @@ function ModelsTab({ selectedModel, setSelectedModel }: { selectedModel: string;
                             <label className="text-xs text-[var(--color-foreground-muted)] mb-1.5 block">API Key</label>
                             <input
                                 type="password"
-                                placeholder="Your API key"
+                                placeholder="Your API key (Optional)"
                                 value={newModel.apiKey}
                                 onChange={(e) => setNewModel({ ...newModel, apiKey: e.target.value })}
                                 className="w-full bg-[var(--color-input)] border border-[var(--color-input-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-foreground)] placeholder-[var(--color-foreground-muted)] focus:outline-none focus:border-[var(--color-border-strong)]"
