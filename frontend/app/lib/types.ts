@@ -25,6 +25,7 @@ export type Session = {
   id: string;
   userId: string;
   title?: string | null;
+  createdAt?: string;
   updatedAt?: string;
   messages?: Message[];
   isPublic?: boolean;

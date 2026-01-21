@@ -109,7 +109,7 @@ export default function DashboardPage() {
                                     </div>
                                     <div className="flex flex-col min-w-0">
                                         <span className="text-sm text-[#CCC] group-hover:text-white transition-colors truncate block">{session.title || 'Untitled Chat'}</span>
-                                        <span className="text-[10px] text-[#555]">{new Date(session.created_at || Date.now()).toLocaleDateString()}</span>
+                                        <span className="text-[10px] text-[#555]">{new Date(session.createdAt || Date.now()).toLocaleDateString()}</span>
                                     </div>
                                 </div>
                             </div>
@@ -203,7 +203,7 @@ export default function DashboardPage() {
                                         <div>
                                             <p className="text-sm text-white font-medium group-hover:text-blue-400 transition-colors">{session.title || 'Untitled Session'}</p>
                                             <p className="text-xs text-[#555]">
-                                                Created • {new Date(session.created_at || Date.now()).toLocaleDateString()}
+                                                Created • {new Date(session.createdAt || Date.now()).toLocaleDateString()}
                                             </p>
                                         </div>
                                     </div>

@@ -33,6 +33,7 @@ export default function ChatPage() {
       content: msg.content,
       timestamp: msg.createdAt,
       role: msg.role?.toLowerCase() as Message['role'],
+      attachments: msg.attachments || [],
     };
 
     setMessages(prev => {

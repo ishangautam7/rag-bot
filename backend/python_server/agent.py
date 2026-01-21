@@ -83,40 +83,44 @@ async def process_pdf(
         # 4. Formulate the prompt
         if instruction:
             task_description = f"""
-You are a conservative text editor. Your ONLY job is to modify the provided text according to the user's instruction.
+You are a conservative document editor. Your ONLY job is to modify the provided text according to the user's instruction while maintaining a professional format.
 
 USER INSTRUCTION: "{instruction}"
 
-CRITICAL RULES:
-1. RETAIN the original document's structure, topic, and content exactly, UNLESS specifically asked to change it.
-2. Do NOT generate new content from scratch. Do NOT hallucinate a completely different document.
-3. If the user asks to change a name (e.g., "Change author to X"), ONLY change that name. Keep everything else (Abstract, Introduction, etc.) IDENTICAL.
-4. Input text might be messy (extracted from PDF). Do your best to clean up broken lines but KEEP THE WORDS THE SAME.
+TASK:
+1. Read the original content below.
+2. Modify it according to the user's instruction.
+3. Convert the modified content into a clean, professional HTML document.
+4. Use a <style> block to format it like a research paper (Times New Roman, 12pt, 1 inch margins).
+5. Return ONLY the raw HTML code. Start with <html> and end with </html>.
+6. Do NOT include any markdown blocks.
 
-ORIGINAL CONTENT (Start):
+ORIGINAL CONTENT (Raw Text):
 {pdf_content[:50000]}
 ... (End of Content)
 
-MODIFIED CONTENT (return the full text for the new PDF):
+MODIFIED HTML CONTENT:
 """
         else:
             task_description = f"""
-You are a text editor. Your job is to fix grammatical errors and improve readability while STRICTLY preserving the original meaning and structure.
+You are a document improver. Your job is to fix grammatical errors and improve readability while formatting the document professionally.
 
-CRITICAL RULES:
-1. Do NOT change the topic or content.
-2. Do NOT generate a new document.
-3. RETAIN all sections, headers, and key information.
+TASK:
+1. Read the raw text content below.
+2. Improvements grammar and flow.
+3. Convert the content into a well-structured HTML document.
+4. Add CSS in a <style> block for a clean, academic look.
+5. Return ONLY the raw HTML code.
 
 ORIGINAL CONTENT:
 {pdf_content[:50000]}
 
-IMPROVED CONTENT:
+IMPROVED HTML CONTENT:
 """
         
         # 4. Call the AI model
         messages = [
-            {"role": "system", "content": "You are an expert PDF content editor."},
+            {"role": "system", "content": "You are an expert research paper formatter and editor."},
             {"role": "user", "content": task_description}
         ]
         
@@ -127,8 +131,14 @@ IMPROVED CONTENT:
             api_endpoint=api_endpoint
         )
         
-        # 5. Write the new PDF
-        write_result = write_pdf(output_path, ai_response)
+        # Clean markdown
+        ai_response = ai_response.replace("```html", "").replace("```", "").strip()
+        
+        # 5. Write the new PDF using HTML converter
+        # We need to reuse the new converter function
+        # But `process_pdf` might call `write_pdf` which is the old function.
+        # Let's switch to `convert_html_to_pdf`
+        write_result = convert_html_to_pdf(ai_response, output_path)
         
         if "Error" in write_result:
             return {
@@ -162,6 +172,23 @@ def process_pdf_sync(
     """Synchronous wrapper for process_pdf."""
     return asyncio.run(process_pdf(file_path, instruction, model_name, api_key, api_endpoint))
 
+from xhtml2pdf import pisa
+import time
+
+def convert_html_to_pdf(html_content: str, output_path: str) -> str:
+    """Convert HTML content to PDF using xhtml2pdf"""
+    try:
+        with open(output_path, "wb") as f:
+            pisa_status = pisa.CreatePDF(html_content, dest=f)
+        
+        if pisa_status.err:
+            return f"Error creating PDF: {pisa_status.err}"
+        return f"File saved to {output_path}"
+    except Exception as e:
+        return f"Error converting HTML to PDF: {str(e)}"
+
+# ... (rest of imports/logic)
+
 async def generate_pdf(
     instruction: str,
     output_filename: str = "generated_doc.pdf",
@@ -178,28 +205,30 @@ async def generate_pdf(
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
             
-        # 1. Formulate prompt
+        # 1. Formulate prompt for HTML
         prompt = f"""
-You are a document generator.
+You are a research document generator.
 USER INSTRUCTION: "{instruction}"
 
 TASK:
-1. Generate the full content for the document requested by the user.
-2. Format it professionally.
-3. Return ONLY the text content of the document.
-4. Do NOT include markdown code blocks, just the text.
+1. Generate the FULL content for the document requested by the user.
+2. Structure it using HTML5 with semantic tags (h1, h2, p, ul).
+3. Include internal CSS in a <style> block to make it look like a professional research paper (Times New Roman font, logical margins, bold headers).
+4. Return ONLY the complete HTML code. Start with <html> and end with </html>.
+5. Do NOT include any markdown code blocks (like ```html), just the raw HTML code.
 """
         # 2. Call AI
         messages = [{"role": "user", "content": prompt}]
         content = await call_model(model_name, messages, api_key, api_endpoint)
         
-        # 3. Write PDF
-        # Ensure filename is safe
-        import time
+        # Clean markdown if present
+        content = content.replace("```html", "").replace("```", "").strip()
+        
+        # 3. Write PDF (HTML -> PDF)
         safe_name = f"gen_{int(time.time())}.pdf"
         output_path = os.path.join(output_dir, safe_name)
         
-        write_result = write_pdf(output_path, content)
+        write_result = convert_html_to_pdf(content, output_path)
         
         if "Error" in write_result:
              return {"success": False, "summary": write_result}
