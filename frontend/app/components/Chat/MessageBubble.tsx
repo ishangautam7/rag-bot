@@ -43,7 +43,7 @@ export default function MessageBubble({ message, isUser }: MessageBubbleProps) {
               {message.attachments.map((file, i) => (
                 <a
                   key={i}
-                  href={`${file.url}${file.url?.includes('localhost:4000') || file.url?.includes('/api/') ? `?token=${typeof window !== 'undefined' ? localStorage.getItem('token') : ''}` : ''}`}
+                  href={`${file.url}${(file.url?.includes(process.env.NEXT_PUBLIC_API_URL || 'localhost:4000') || file.url?.includes('/api/')) ? `?token=${typeof window !== 'undefined' ? localStorage.getItem('token') : ''}` : ''}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`flex items-center gap-3 px-3 py-2 rounded-xl border max-w-full transition-colors hover:opacity-80 ${isUser

@@ -56,7 +56,8 @@ async def process_chat(request: ChatRequest, db: Session) -> ChatResponse:
                          db.add(new_doc)
                          db.commit()
                     
-                    download_link = f"http://localhost:4000/api/files/{filename}"
+                    public_api_url = os.getenv("PUBLIC_API_URL", "http://localhost:4000")
+                    download_link = f"{public_api_url}/api/files/{filename}"
                     return ChatResponse(
                         response=result['summary'],
                         sources=[],
@@ -114,14 +115,15 @@ async def process_chat(request: ChatRequest, db: Session) -> ChatResponse:
                 
                 # Construct download link pointing to Node Backend (port 4000)
                 # Node will verify session access via DB record we just created
-                return ChatResponse(
+                    public_api_url = os.getenv("PUBLIC_API_URL", "http://localhost:4000")
+                    return ChatResponse(
                     response=result['summary'],
                     sources=[],
                     is_error=False,
                     attachments=[{
                         "name": filename,
                         "type": "application/pdf",
-                        "url": f"http://localhost:4000/api/chat/files/{filename}"
+                        "url": f"{public_api_url}/api/chat/files/{filename}"
                     }]
                 )
             else:

@@ -75,7 +75,7 @@ export const addMessage = async (
         if (apiKey) ragPayload.api_key = apiKey;
         if (apiEndpoint) ragPayload.api_endpoint = apiEndpoint;
 
-        const ragResponse = await fetch('http://localhost:8000/chat', {
+        const ragResponse = await fetch(`${process.env.PYTHON_API_URL || 'http://localhost:8000'}/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(ragPayload),
@@ -175,7 +175,7 @@ export const getSessionDocuments = async (sessionId: string, userId: string) => 
 
     // Call RAG server to get documents
     try {
-        const response = await fetch(`http://localhost:8000/documents/${sessionId}`);
+        const response = await fetch(`${process.env.PYTHON_API_URL || 'http://localhost:8000'}/documents/${sessionId}`);
         if (response.ok) {
             return await response.json();
         }
