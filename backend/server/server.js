@@ -7,9 +7,10 @@ import authRoutes from "./src/routes/auth.routes.ts";
 import chatRoutes from "./src/routes/chat.routes.ts";
 // import sessionRoutes from "./src/routes/session.routes.ts";
 // import messageRoutes from "./src/routes/message.routes.ts";
-// import fileRoutes from "./src/routes/file.routes.ts";
+import fileRoutes from "./src/routes/file.routes.ts";
 // import shareRoutes from "./src/routes/share.routes.ts";
 // import groupRoutes from "./src/routes/group.routes.ts";
+import settingsRoutes from './src/routes/settings.routes.ts';
 import usageRoutes from "./src/routes/usage.route.ts";
 import adminRoutes from "./src/routes/admin.routes.ts";
 import contactRoutes from "./src/routes/contact.routes.ts";
@@ -32,11 +33,14 @@ app.use('/api/usage', usageRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/contact', contactRoutes);
 
+app.use('/api/admin/settings', settingsRoutes);
+
 
 import folderRoutes from './src/routes/folder.routes.ts';
 import templateRoutes from './src/routes/template.routes.ts';
 app.use('/api/folders', folderRoutes);
 app.use('/api/templates', templateRoutes);
+app.use('/api/files', fileRoutes);
 
 // app.use('/uploads', express.static('uploads'));
 

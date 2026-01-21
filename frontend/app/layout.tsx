@@ -2,7 +2,6 @@
 
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import { Navbar } from './components/UI/Navbar';
 import { usePathname } from 'next/navigation';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
@@ -23,10 +22,6 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-  // Show navbar only on landing page
-  const showNavbar = pathname === '/';
-
   return (
     <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased bg-[var(--color-background)] text-[var(--color-foreground)] min-h-screen flex flex-col`}>
@@ -45,8 +40,7 @@ export default function RootLayout({
         />
 
         <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''}>
-          {showNavbar && <Navbar />}
-          <main className={`flex-grow ${showNavbar ? 'pt-16' : ''}`}>
+          <main className="flex-grow">
             {children}
           </main>
         </GoogleOAuthProvider>

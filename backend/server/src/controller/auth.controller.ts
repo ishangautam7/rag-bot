@@ -107,3 +107,28 @@ export const broadcastEmail = async (req: AuthRequest, res: Response): Promise<a
     res.status(403).json({ error: error.message });
   }
 };
+
+export const updateProfile = async (req: AuthRequest, res: Response): Promise<any> => {
+  try {
+    const userId = req.user!;
+    const { lastSelectedModel } = req.body;
+
+    if (lastSelectedModel) {
+      await authService.updateUserProfile(userId, { lastSelectedModel });
+    }
+
+    res.json({ message: 'Profile updated successfully' });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const getAvailableModels = async (req: AuthRequest, res: Response): Promise<any> => {
+  try {
+    const models = await authService.getAvailableModels();
+    res.json(models);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+

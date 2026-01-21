@@ -44,20 +44,7 @@ export default function ChatPage() {
 
   // Check if session is collaborative
   const [isCollaborative, setIsCollaborative] = useState(false);
-
-  useEffect(() => {
-    // Check if this session has collaborators
-    const checkCollaborative = async () => {
-      try {
-        const { getMembers } = await import('@/app/lib/api');
-        const res = await getMembers(chatId);
-        setIsCollaborative(res.data.length > 0);
-      } catch {
-        setIsCollaborative(false);
-      }
-    };
-    if (chatId) checkCollaborative();
-  }, [chatId]);
+  const [isGroupChat, setIsGroupChat] = useState(false);
 
   // Connect to WebSocket only for collaborative sessions
   const { connected } = useSocket({
@@ -79,7 +66,24 @@ export default function ChatPage() {
     const load = async () => {
       try {
         const res = await getMessages(chatId);
-        const data: BackendMessage[] = res.data as unknown as BackendMessage[];
+
+        let data: BackendMessage[];
+        let groupFlag = false;
+
+        // Cast to any to handle the dynamic response structure
+        const responseData = res.data as any;
+
+        // Handle both older array response and new object response (for backward compatibility or type safety)
+        if (Array.isArray(responseData)) {
+          data = responseData;
+        } else {
+          data = responseData.messages;
+          groupFlag = responseData.isGroupChat || responseData.isPublic || false;
+        }
+
+        setIsCollaborative(groupFlag);
+        setIsGroupChat(groupFlag);
+
         const mapped: Message[] = data.map((m) => ({
           id: m.id!,
           content: m.content,
@@ -112,10 +116,16 @@ export default function ChatPage() {
     }
   };
 
+  // Error state for displaying error banner
+  const [error, setError] = useState<string | null>(null);
+
   const handleSendMessage = async (content: string, _files?: File[], model?: string, apiKey?: string, apiEndpoint?: string, uploadedFiles?: { name: string; url: string; type: string }[]) => {
     if (!chatId) return;
 
     if (!content.trim()) return;
+
+    // Clear any previous error
+    setError(null);
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -128,13 +138,11 @@ export default function ChatPage() {
     setLoading(true);
     try {
       const res = await sendMessage(chatId, content, model, apiKey, apiEndpoint, uploadedFiles);
-      const { userMessage: u, botMessage: b } = res.data as SendMessageResponse;
+      const data = res.data as SendMessageResponse & { isError?: boolean; errorMessage?: string };
+      const { userMessage: u, botMessage: b, isError, errorMessage } = data;
 
-      // Track IDs to prevent duplicates from WebSocket
+      // Track user message ID to prevent duplicates from WebSocket
       if (u.id) processedMessageIds.current.add(u.id);
-      if (b.id) processedMessageIds.current.add(b.id);
-
-      if (b.id) processedMessageIds.current.add(b.id);
 
       const mappedU: Message = {
         id: u.id!,
@@ -143,14 +151,37 @@ export default function ChatPage() {
         role: u.role.toLowerCase() as Message['role'],
         attachments: userMessage.attachments
       };
-      const mappedB: Message = { id: b.id!, content: b.content, timestamp: b.createdAt!, role: b.role.toLowerCase() as Message['role'] };
 
-      setMessages((prev) => {
-        // Filter out temp message and any existing duplicates
-        const filtered = prev.filter(m => m.id !== userMessage.id && m.id !== u.id && m.id !== b.id);
-        return [...filtered, mappedU, mappedB];
-      });
-    } catch {
+      // If there's an error, show it as a banner instead of a message
+      if (isError) {
+        setError(errorMessage || 'An error occurred. Please try again.');
+        setMessages((prev) => {
+          // Replace temp message with actual user message
+          const filtered = prev.filter(m => m.id !== userMessage.id && m.id !== u.id);
+          return [...filtered, mappedU];
+        });
+        // Auto-dismiss error after 10 seconds
+        setTimeout(() => setError(null), 10000);
+      } else if (b && b.id) {
+        // Track bot message ID to prevent duplicates from WebSocket
+        processedMessageIds.current.add(b.id);
+
+        const mappedB: Message = {
+          id: b.id!,
+          content: b.content,
+          timestamp: b.createdAt!,
+          role: b.role.toLowerCase() as Message['role']
+        };
+
+        setMessages((prev) => {
+          // Filter out temp message and any existing duplicates
+          const filtered = prev.filter(m => m.id !== userMessage.id && m.id !== u.id && m.id !== b.id);
+          return [...filtered, mappedU, mappedB];
+        });
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.error || 'Failed to send message. Please try again.');
+      setTimeout(() => setError(null), 10000);
     } finally {
       setLoading(false);
     }
@@ -231,6 +262,28 @@ export default function ChatPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
           </svg>
         </button>
+      )}
+
+      {/* Error Banner */}
+      {error && (
+        <div className="sticky bottom-[120px] left-0 right-0 z-30 px-4">
+          <div className="max-w-2xl mx-auto">
+            <div className="flex items-center gap-3 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400">
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="flex-1 text-sm">{error}</p>
+              <button
+                onClick={() => setError(null)}
+                className="p-1 hover:bg-red-500/20 rounded transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Input */}

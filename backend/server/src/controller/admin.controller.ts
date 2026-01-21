@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middlewares/auth';
 import * as adminService from '../services/admin.service';
+import * as settingsService from '../services/settings.service';
 
 /**
  * GET /api/admin/users
@@ -101,7 +102,7 @@ export const broadcastEmail = async (req: AuthRequest, res: Response): Promise<a
  */
 export const getGrantableModels = async (req: AuthRequest, res: Response): Promise<any> => {
     try {
-        const models = adminService.getGrantableModels();
+        const models = await adminService.getGrantableModels();
         return res.json(models);
     } catch (error) {
         console.error('Error getting models:', error);
@@ -147,5 +148,131 @@ export const getResponseMetrics = async (req: AuthRequest, res: Response): Promi
     } catch (error) {
         console.error('Error getting metrics:', error);
         return res.status(500).json({ error: 'Failed to get metrics' });
+    }
+};
+
+/**
+ * GET /api/admin/settings
+ * Get system settings
+ */
+export const getSystemSettings = async (req: AuthRequest, res: Response): Promise<any> => {
+    try {
+        const settings = await settingsService.getSystemSettings();
+        return res.json(settings);
+    } catch (error) {
+        console.error('Error getting system settings:', error);
+        return res.status(500).json({ error: 'Failed to get system settings' });
+    }
+};
+
+/**
+ * GET /api/admin/settings/public
+ * Get public system settings (for Python server)
+ */
+export const getPublicSystemSettings = async (req: Request, res: Response): Promise<any> => {
+    try {
+        // TODO: Add IP restriction or basic auth if needed
+        const settings = await settingsService.getSystemSettings();
+
+        // Only return what's needed for the Python server
+        return res.json({
+            openrouterApiKey: settings.openrouterApiKey,
+            defaultModel: settings.defaultModel
+        });
+    } catch (error) {
+        console.error('Error getting public settings:', error);
+        return res.status(500).json({ error: 'Failed to get public settings' });
+    }
+};
+
+/**
+ * PUT /api/admin/settings
+ * Update system settings
+ */
+export const updateSystemSettings = async (req: AuthRequest, res: Response): Promise<any> => {
+    try {
+        const { openrouterApiKey, defaultModel, maxFreeMessagesPerDay, systemStatus, grantableModels } = req.body;
+
+        const settings = await settingsService.updateSystemSettings({
+            openrouterApiKey,
+            defaultModel,
+            maxFreeMessagesPerDay,
+            systemStatus,
+            grantableModels
+        });
+
+        return res.json({ message: 'Settings updated successfully', settings });
+    } catch (error) {
+        console.error('Error updating system settings:', error);
+        return res.status(500).json({ error: 'Failed to update system settings' });
+    }
+};
+
+/**
+ * POST /api/admin/users/:id/suspend
+ * Suspend a user account
+ */
+export const suspendUser = async (req: AuthRequest, res: Response): Promise<any> => {
+    try {
+        const { id } = req.params;
+        const { reason } = req.body;
+        const user = await adminService.suspendUser(id, reason);
+        return res.json({ message: 'User suspended', user });
+    } catch (error) {
+        console.error('Error suspending user:', error);
+        return res.status(500).json({ error: 'Failed to suspend user' });
+    }
+};
+
+/**
+ * POST /api/admin/users/:id/activate
+ * Activate (unsuspend) a user account
+ */
+export const activateUser = async (req: AuthRequest, res: Response): Promise<any> => {
+    try {
+        const { id } = req.params;
+        const user = await adminService.activateUser(id);
+        return res.json({ message: 'User activated', user });
+    } catch (error) {
+        console.error('Error activating user:', error);
+        return res.status(500).json({ error: 'Failed to activate user' });
+    }
+};
+
+/**
+ * DELETE /api/admin/users/:id
+ * Delete a user (soft or hard)
+ */
+export const deleteUser = async (req: AuthRequest, res: Response): Promise<any> => {
+    try {
+        const { id } = req.params;
+        const hard = req.query.hard === 'true';
+        const result = await adminService.deleteUser(id, hard);
+        return res.json({ message: `User ${hard ? 'permanently' : 'soft'} deleted`, ...result });
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        return res.status(500).json({ error: 'Failed to delete user' });
+    }
+};
+
+/**
+ * PUT /api/admin/users/:id/limits
+ * Update user's custom message limit
+ */
+export const updateUserLimits = async (req: AuthRequest, res: Response): Promise<any> => {
+    try {
+        const { id } = req.params;
+        const { customMessageLimit } = req.body;
+
+        // Allow null to reset to default, or number for custom limit
+        const limit = customMessageLimit === null || customMessageLimit === undefined
+            ? null
+            : parseInt(customMessageLimit, 10);
+
+        const user = await adminService.updateUserLimits(id, limit);
+        return res.json({ message: 'User limits updated', user });
+    } catch (error) {
+        console.error('Error updating user limits:', error);
+        return res.status(500).json({ error: 'Failed to update user limits' });
     }
 };

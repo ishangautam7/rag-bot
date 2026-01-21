@@ -17,6 +17,15 @@ export const emitNewMessage = (sessionId: string, message: any) => {
     }
 };
 
+export const emitError = (sessionId: string, errorMessage: string) => {
+    if (ioInstance) {
+        ioInstance.to(sessionId).emit('chat-error', {
+            sessionId,
+            errorMessage,
+        });
+    }
+};
+
 export const emitUserJoined = (sessionId: string, user: any) => {
     if (ioInstance) {
         ioInstance.to(sessionId).emit('user-joined', {

@@ -8,6 +8,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model SystemSettings {
+  id                    String   @id @default("system") // Singleton pattern
+  openrouterApiKey      String?  // Admin's OpenRouter key for shared use
+  defaultModel          String   @default("gemini-2.5-flash-lite")
+  maxFreeMessagesPerDay Int      @default(50)
+  systemStatus          String   @default("active") // "active" | "maintenance"
+  grantableModels       Json     @default("[]") // Array of models admin can grant
+  updatedAt             DateTime @updatedAt
+  createdAt             DateTime @default(now())
+}
+
 model ApplicationLog {
   id          Int      @id @default(autoincrement())
   session_id  String
@@ -20,18 +31,36 @@ model ApplicationLog {
 }
 
 model User {
-  id                String           @id @default(uuid())
-  email             String           @unique
-  username          String?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  avatar            String?
-  googleId          String?          @unique
-  password          String?
-  isAdmin           Boolean          @default(false)
-  resetToken        String?
-  resetTokenExpires DateTime?
-  allowedModels     String[]         @default(["openrouter/auto"])
+  id                 String           @id @default(uuid())
+  email              String           @unique
+  username           String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  avatar             String?
+  googleId           String?          @unique
+  password           String?
+  isAdmin            Boolean          @default(false)
+  resetToken         String?
+  resetTokenExpires  DateTime?
+  allowedModels      String[]         @default([])
+  
+  // User status control
+  isActive           Boolean          @default(true)
+  isSuspended        Boolean          @default(false)
+  suspendedAt        DateTime?
+  suspendedReason    String?
+  
+  // Custom limits (null = use global default)
+  customMessageLimit Int?
+  
+  // Login tracking
+  lastLoginAt        DateTime?
+  loginCount         Int              @default(0)
+
+  // Preferences
+  lastSelectedModel  String?
+  
+  // Relations
   activityLogs      ActivityLog[]
   folders           Folder[]
   sentMessages      Message[]

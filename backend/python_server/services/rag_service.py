@@ -95,3 +95,19 @@ async def process_document(file: UploadFile, user_id: str, session_id: str, db: 
         db.commit()
     
     return len(splits)
+
+def get_latest_document_path(session_id: str, db: Session) -> str:
+    """Get the path of the most recent document for a session."""
+    try:
+        doc = db.query(Document)\
+            .filter(Document.session_id == session_id)\
+            .order_by(Document.created_at.desc())\
+            .first()
+        
+        if doc and doc.file_path and os.path.exists(doc.file_path):
+            return doc.file_path
+        
+        return None
+    except Exception as e:
+        print(f"Error getting latest doc: {e}")
+        return None

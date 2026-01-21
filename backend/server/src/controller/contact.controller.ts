@@ -8,8 +8,7 @@ export const submitContactForm = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Email and message are required' });
         }
 
-        // In a real app, you would send an email here using SendGrid/AWS SES/Nodemailer
-        // For now, we'll just log it
+        //use nodemailer later if this be used in frontend
         console.log('--- NEW CONTACT FORM SUBMISSION ---');
         console.log(`From: ${firstName} ${lastName} <${email}>`);
         console.log(`Message: ${message}`);

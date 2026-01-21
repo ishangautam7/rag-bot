@@ -14,14 +14,24 @@ const transporter = nodemailer.createTransport({
     },
 });
 
-// List of additional free models from OpenRouter that admin can grant
-export const GRANTABLE_FREE_MODELS = [
-    { id: 'openrouter/auto', name: 'Auto (Free)', description: 'Best available free model' },
-    { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Llama 3.2 3B', description: 'Meta Llama 3.2' },
-    { id: 'google/gemma-2-9b-it:free', name: 'Gemma 2 9B', description: 'Google Gemma 2' },
-    { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B', description: 'Mistral AI' },
-    { id: 'qwen/qwen-2-7b-instruct:free', name: 'Qwen 2 7B', description: 'Alibaba Qwen' },
-    { id: 'microsoft/phi-3-mini-128k-instruct:free', name: 'Phi-3 Mini', description: 'Microsoft Phi-3' },
+// List of models that admin can grant to users
+// Includes both free OpenRouter models and admin-provided models (Gemini, GPT, etc.)
+export const GRANTABLE_MODELS = [
+    // OpenRouter Free Models
+    { id: 'openrouter/auto', name: 'Auto (Free)', description: 'Best available free model', provider: 'OpenRouter', isFree: true },
+    { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Llama 3.2 3B', description: 'Meta Llama 3.2', provider: 'OpenRouter', isFree: true },
+    { id: 'google/gemma-2-9b-it:free', name: 'Gemma 2 9B', description: 'Google Gemma 2', provider: 'OpenRouter', isFree: true },
+    { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B', description: 'Mistral AI', provider: 'OpenRouter', isFree: true },
+    { id: 'qwen/qwen-2-7b-instruct:free', name: 'Qwen 2 7B', description: 'Alibaba Qwen', provider: 'OpenRouter', isFree: true },
+
+    // Gemini Models (Admin Key Required)
+    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', description: 'Latest Gemini Flash', provider: 'Google' },
+    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Fast Gemini model', provider: 'Google' },
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'Advanced Gemini model', provider: 'Google' },
+
+    // GPT Models (If admin provides OpenAI key in future)
+    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Affordable GPT-4 class', provider: 'OpenAI' },
+    { id: 'gpt-4o', name: 'GPT-4o', description: 'Latest GPT-4', provider: 'OpenAI' },
 ];
 
 /**
@@ -39,6 +49,13 @@ export const getAllUsers = async () => {
             isAdmin: true,
             allowedModels: true,
             createdAt: true,
+            isActive: true,
+            isSuspended: true,
+            suspendedAt: true,
+            suspendedReason: true,
+            customMessageLimit: true,
+            lastLoginAt: true,
+            loginCount: true,
             _count: {
                 select: {
                     sessions: true,
@@ -141,23 +158,48 @@ export const resetUserUsage = async (userId: string) => {
  * Update user's allowed models
  */
 export const updateAllowedModels = async (userId: string, models: string[]) => {
-    // Ensure openrouter/auto is always included (base free model)
-    const modelsSet = new Set(models);
-    modelsSet.add('openrouter/auto');
+    const today = new Date().toISOString().split('T')[0];
 
-    const user = await prisma.user.update({
+    // First update the allowedModels
+    await prisma.user.update({
         where: { id: userId },
         data: {
-            allowedModels: Array.from(modelsSet)
-        },
-        select: {
-            id: true,
-            email: true,
-            allowedModels: true
+            allowedModels: models
         }
     });
 
-    return user;
+    // Then fetch the full user object with all required fields
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+            id: true,
+            email: true,
+            username: true,
+            avatar: true,
+            isAdmin: true,
+            allowedModels: true,
+            createdAt: true,
+            _count: {
+                select: {
+                    sessions: true,
+                    sentMessages: true
+                }
+            }
+        }
+    });
+
+    // Get today's usage
+    const usage = await prisma.usageLog.findFirst({
+        where: {
+            userId: userId,
+            date: today
+        }
+    });
+
+    return {
+        ...user,
+        todayUsage: usage?.freeMessageCount || 0
+    };
 };
 
 /**
@@ -223,6 +265,137 @@ export const broadcastToUsers = async (
 /**
  * Get list of grantable models
  */
-export const getGrantableModels = () => {
-    return GRANTABLE_FREE_MODELS;
+/**
+ * Get list of grantable models
+ */
+export const getGrantableModels = async () => {
+    // Fetch dynamic models from DB settings
+    const settings = await prisma.systemSettings.findUnique({
+        where: { id: 'system' }
+    });
+
+    const dynamicModels = (settings?.grantableModels as any[]) || [];
+
+    // Merge hardcoded models with dynamic ones
+    // Dynamic models take precedence if IDs match (or just append)
+    const allModels = [...GRANTABLE_MODELS];
+
+    // Add dynamic models if they don't exist in hardcoded list
+    dynamicModels.forEach(dm => {
+        if (!allModels.find(m => m.id === dm.id)) {
+            allModels.push(dm);
+        }
+    });
+
+    return allModels;
+};
+
+/**
+ * Suspend a user account
+ */
+export const suspendUser = async (userId: string, reason?: string) => {
+    const user = await prisma.user.update({
+        where: { id: userId },
+        data: {
+            isSuspended: true,
+            suspendedAt: new Date(),
+            suspendedReason: reason || 'Suspended by admin'
+        },
+        select: {
+            id: true,
+            email: true,
+            username: true,
+            isSuspended: true,
+            suspendedAt: true,
+            suspendedReason: true
+        }
+    });
+    return user;
+};
+
+/**
+ * Activate (unsuspend) a user account
+ */
+export const activateUser = async (userId: string) => {
+    const user = await prisma.user.update({
+        where: { id: userId },
+        data: {
+            isSuspended: false,
+            isActive: true,
+            suspendedAt: null,
+            suspendedReason: null
+        },
+        select: {
+            id: true,
+            email: true,
+            username: true,
+            isSuspended: true,
+            isActive: true
+        }
+    });
+    return user;
+};
+
+/**
+ * Delete a user (soft or hard delete)
+ */
+export const deleteUser = async (userId: string, hard: boolean = false) => {
+    if (hard) {
+        // Hard delete - remove all user data
+        await prisma.$transaction([
+            prisma.message.deleteMany({ where: { senderId: userId } }),
+            prisma.usageLog.deleteMany({ where: { userId } }),
+            prisma.activityLog.deleteMany({ where: { userId } }),
+            prisma.promptTemplate.deleteMany({ where: { userId } }),
+            prisma.refreshToken.deleteMany({ where: { userId } }),
+            prisma.sessionMember.deleteMany({ where: { userId } }),
+            prisma.folder.deleteMany({ where: { userId } }),
+            prisma.session.deleteMany({ where: { userId } }),
+            prisma.user.delete({ where: { id: userId } })
+        ]);
+        return { deleted: true, hard: true };
+    } else {
+        // Soft delete - mark as inactive
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                isActive: false,
+                isSuspended: true,
+                suspendedReason: 'Account deleted'
+            }
+        });
+        return { deleted: true, hard: false };
+    }
+};
+
+/**
+ * Update user's custom message limit
+ */
+export const updateUserLimits = async (userId: string, customMessageLimit: number | null) => {
+    const user = await prisma.user.update({
+        where: { id: userId },
+        data: {
+            customMessageLimit: customMessageLimit
+        },
+        select: {
+            id: true,
+            email: true,
+            username: true,
+            customMessageLimit: true
+        }
+    });
+    return user;
+};
+
+/**
+ * Track user login
+ */
+export const trackLogin = async (userId: string) => {
+    await prisma.user.update({
+        where: { id: userId },
+        data: {
+            lastLoginAt: new Date(),
+            loginCount: { increment: 1 }
+        }
+    });
 };

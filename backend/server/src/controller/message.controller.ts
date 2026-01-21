@@ -116,7 +116,6 @@ export const getFile = async (req: AuthRequest, res: Response): Promise<any> => 
         const doc = await prisma.document.findFirst({
             where: { filename }
         });
-        console.log(doc)
         if (!doc || !doc.sessionId) {
             return res.status(404).json({ error: 'File not found or invalid session' });
         }
@@ -127,14 +126,12 @@ export const getFile = async (req: AuthRequest, res: Response): Promise<any> => 
         const isOwner = await prisma.session.findFirst({
             where: { id: doc.sessionId as any, userId }
         });
-        console.log(isOwner)
         // Check if member
         const isMember = !isOwner && await prisma.sessionMember.findUnique({
             where: {
                 sessionId_userId: { sessionId: doc.sessionId as any, userId }
             }
         });
-        console.log(isMember)
         if (!isOwner && !isMember) {
             return res.status(403).json({ error: 'Access denied' });
         }

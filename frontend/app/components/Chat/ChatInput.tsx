@@ -18,15 +18,25 @@ export default function ChatInput({ onSendMessage, disabled = false, sessionId, 
   const [uploadedFiles, setUploadedFiles] = useState<{ name: string; type: string; url: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash');
+  const [showModelPrompt, setShowModelPrompt] = useState(false);
+
+  const [selectedModel, setSelectedModel] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('selectedModel') || '';
+    }
+    return '';
+  });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { remaining, isFreeModel, refreshUsage, canSendFreeMessage } = useFreeMessageLimit();
 
   useEffect(() => {
-    const savedModel = localStorage.getItem('selectedModel');
-    if (savedModel) setSelectedModel(savedModel);
-  }, []);
+    if (!selectedModel) {
+      setShowModelPrompt(true);
+    } else {
+      setShowModelPrompt(false);
+    }
+  }, [selectedModel]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -109,8 +119,13 @@ export default function ChatInput({ onSendMessage, disabled = false, sessionId, 
 
   const handleSend = () => {
     if (message.trim()) {
+      if (!selectedModel) {
+        setShowModelPrompt(true);
+        return;
+      }
+
       if (isFreeModel(selectedModel) && !canSendFreeMessage()) {
-        alert('You have reached your daily limit of 15 free messages. Please try again tomorrow or switch to a paid model.');
+        alert('You have reached your daily limit of 15 free messages. Please try again tomorrow or switch to a model with your API key.');
         return;
       }
 
@@ -150,6 +165,24 @@ export default function ChatInput({ onSendMessage, disabled = false, sessionId, 
       onDrop={handleDrop}
     >
       <div className="max-w-2xl mx-auto w-full">
+        {/* Model Selection Prompt Toast */}
+        {showModelPrompt && (
+          <div className="mb-3 flex items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400">
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <p className="flex-1 text-sm">Please select a model from the dropdown below to start chatting.</p>
+            <button
+              onClick={() => setShowModelPrompt(false)}
+              className="p-1 hover:bg-amber-500/20 rounded transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         {/* File Previews */}
         {files.length > 0 && (
           <div className="flex gap-2 mb-2 flex-wrap">

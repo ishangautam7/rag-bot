@@ -14,6 +14,10 @@ router.get('/users', adminController.getAllUsers);
 router.get('/users/:id', adminController.getUserById);
 router.post('/users/:id/reset-usage', adminController.resetUserUsage);
 router.post('/users/:id/allowed-models', adminController.updateAllowedModels);
+router.post('/users/:id/suspend', adminController.suspendUser);
+router.post('/users/:id/activate', adminController.activateUser);
+router.delete('/users/:id', adminController.deleteUser);
+router.put('/users/:id/limits', adminController.updateUserLimits);
 
 // Broadcast email
 router.post('/broadcast', adminController.broadcastEmail);
@@ -25,4 +29,10 @@ router.get('/models', adminController.getGrantableModels);
 router.get('/activity', adminController.getActivityLogs);
 router.get('/metrics', adminController.getResponseMetrics);
 
+// System Settings
+router.get('/settings/public', adminController.getPublicSystemSettings as any);
+router.get('/settings', adminController.getSystemSettings);
+router.put('/settings', adminController.updateSystemSettings);
+
 export default router;
+

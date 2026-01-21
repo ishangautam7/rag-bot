@@ -1,19 +1,17 @@
+"""
+PDF Processing Agent
+Handles PDF modification based on user instructions or auto-improvement.
+"""
 import os
-from typing import Annotated, TypedDict, List, Literal
+import asyncio
+from typing import Optional
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-from langchain_core.tools import tool
-from langgraph.graph import StateGraph, START, END
-from langgraph.graph.message import add_messages
-from langgraph.checkpoint.memory import MemorySaver
-from pypdf import PdfReader, PdfWriter
+from pypdf import PdfReader
 from fpdf import FPDF
+from model import call_model
 
 load_dotenv()
 
-@tool
 def read_pdf(file_path: str) -> str:
     """Read the pdf file and extract the text"""
     try:
@@ -23,120 +21,194 @@ def read_pdf(file_path: str) -> str:
             text += page.extract_text() + "\n"
         return text
     except Exception as e:
-        return str(e)
+        return f"Error reading PDF: {str(e)}"
 
-@tool
-def create_pdf_copy(file_path: str, output_path: str) -> str:
-    """Creates a copy of the original pdf given by user"""
-    try:
-        reader = PdfReader(file_path)
-        writer = PdfWriter()
-        for page in reader.pages:
-            writer.add_page(page)
-        with open(output_path, "wb") as f:
-            writer.write(f)
-        return output_path
-    except Exception as e:
-        return str(e)
-
-@tool
-def write_new_pdf(file_path: str, content: str) -> str:
+def write_pdf(file_path: str, content: str) -> str:
     """Writes new text content to a PDF file"""
     try:
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", size=12)
+        # FPDF issues with utf-8, simple workaround for latin-1
         safe_content = content.encode('latin-1', 'replace').decode('latin-1')
         pdf.multi_cell(0, 10, txt=safe_content)
         pdf.output(file_path)
         return f"File saved to {file_path}"
     except Exception as e:
-        return str(e)
+        return f"Error writing PDF: {str(e)}"
 
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=os.getenv("GOOGLE_API_KEY"))
-tools = [read_pdf, create_pdf_copy, write_new_pdf]
-llm_with_tools = llm.bind_tools(tools)
-
-class AgentState(TypedDict):
-    messages: Annotated[List, add_messages]
-    original_file_path: str
-    working_file_path: str
-    review_status: str
-    user_feedback: str
-
-def setup_node(state: AgentState):
-    original = state["original_file_path"]
-    working = f"working_copy_{os.path.basename(original)}"
-    create_pdf_copy(original, working)
-    return {
-        "working_file_path": working,
-        "messages": [SystemMessage(content=f"Created working copy: {working}")]
-    }
-
-def review_node(state: AgentState):
-    # Manually read text to ensure context is available immediately
-    file_content = read_pdf(state["working_file_path"])
-    
-    instructions = f"""
-    You are an expert in PDF file review.
-    1. Analyze the file content provided below.
-    2. If there is previous feedback '{state.get('user_feedback', '')}', prioritize it.
-    3. Propose specific changes or the full corrected text.
-    4. DO NOT call write tools yet. Just propose.
-    
-    File Content:
-    {file_content[:5000]}
+async def process_pdf(
+    file_path: str,
+    instruction: str = "",
+    model_name: str = "gemini-2.5-flash-lite",
+    api_key: Optional[str] = None,
+    api_endpoint: Optional[str] = None
+) -> dict:
     """
+    Process a PDF file with AI assistance.
     
-    response = llm.invoke([SystemMessage(content=instructions)] + state["messages"])
-    return {
-        "messages": [response],
-        "review_status": "proposal_ready"
-    }
-
-def edit_node(state: AgentState):
-    last_message = state["messages"][-1]
-    instructions = f"""
-    The user has approved the changes.
-    Create the final PDF at: {state['working_file_path']}
+    Args:
+        file_path: Path to input PDF
+        instruction: User instruction (empty for auto-fix mode)
+        model_name: AI model to use
+        api_key: Optional API key
+        api_endpoint: Optional custom endpoint
     
-    Content to write:
-    {last_message.content}
+    Returns:
+        dict with 'output_file', 'summary', and 'success' keys
     """
-    # Use LLM with tools to decide how to write the file
-    response = llm_with_tools.invoke([SystemMessage(content=instructions)])
-    
-    # If LLM didn't call tool, we force a manual write (fallback)
-    if not response.tool_calls:
-        write_new_pdf(state["working_file_path"], last_message.content)
-        return {"messages": [AIMessage(content="File updated manually.")]}
+    try:
+        # 1. Read the input PDF
+        pdf_content = read_pdf(file_path)
         
-    return {"messages": [response]}
+        if "Error reading PDF" in pdf_content:
+            return {
+                "output_file": None,
+                "summary": f"Could not read file: {file_path}",
+                "success": False
+            }
+        
+        if len(pdf_content.strip()) < 50:
+            return {
+                "output_file": None,
+                "summary": "The PDF appears to be empty or contains only images (scanned). This tool only works with text-selectable PDFs.",
+                "success": False
+            }
+        
+        # 3. Determine output path
+        output_path = file_path.replace(".pdf", "_modified.pdf")
+        if output_path == file_path:
+            output_path = file_path.rsplit(".", 1)[0] + "_modified.pdf"
+        
+        # 4. Formulate the prompt
+        if instruction:
+            task_description = f"""
+You are a conservative text editor. Your ONLY job is to modify the provided text according to the user's instruction.
 
-def check_approval(state: AgentState) -> Literal["edit_node", "review_node"]:
-    if state.get("review_status") == "approved":
-        return "edit_node"
-    return "review_node"
+USER INSTRUCTION: "{instruction}"
 
-workflow = StateGraph(AgentState)
+CRITICAL RULES:
+1. RETAIN the original document's structure, topic, and content exactly, UNLESS specifically asked to change it.
+2. Do NOT generate new content from scratch. Do NOT hallucinate a completely different document.
+3. If the user asks to change a name (e.g., "Change author to X"), ONLY change that name. Keep everything else (Abstract, Introduction, etc.) IDENTICAL.
+4. Input text might be messy (extracted from PDF). Do your best to clean up broken lines but KEEP THE WORDS THE SAME.
 
-workflow.add_node("setup_node", setup_node)
-workflow.add_node("review_node", review_node)
-workflow.add_node("edit_node", edit_node)
+ORIGINAL CONTENT (Start):
+{pdf_content[:50000]}
+... (End of Content)
 
-workflow.add_edge(START, "setup_node")
-workflow.add_edge("setup_node", "review_node")
+MODIFIED CONTENT (return the full text for the new PDF):
+"""
+        else:
+            task_description = f"""
+You are a text editor. Your job is to fix grammatical errors and improve readability while STRICTLY preserving the original meaning and structure.
 
-workflow.add_conditional_edges(
-    "review_node",
-    check_approval,
-    {
-        "edit_node": "edit_node",
-        "review_node": "review_node"
-    }
-)
+CRITICAL RULES:
+1. Do NOT change the topic or content.
+2. Do NOT generate a new document.
+3. RETAIN all sections, headers, and key information.
 
-workflow.add_edge("edit_node", END)
+ORIGINAL CONTENT:
+{pdf_content[:50000]}
 
-memory = MemorySaver()
-app = workflow.compile(checkpointer=memory, interrupt_before=["edit_node"])
+IMPROVED CONTENT:
+"""
+        
+        # 4. Call the AI model
+        messages = [
+            {"role": "system", "content": "You are an expert PDF content editor."},
+            {"role": "user", "content": task_description}
+        ]
+        
+        ai_response = await call_model(
+            model_name=model_name,
+            messages=messages,
+            api_key=api_key,
+            api_endpoint=api_endpoint
+        )
+        
+        # 5. Write the new PDF
+        write_result = write_pdf(output_path, ai_response)
+        
+        if "Error" in write_result:
+            return {
+                "output_file": None,
+                "summary": write_result,
+                "success": False
+            }
+        
+        # 6. Return success
+        return {
+            "output_file": output_path,
+            "summary": f"Successfully processed PDF. Output saved to: {output_path}",
+            "success": True
+        }
+        
+    except Exception as e:
+        return {
+            "output_file": None,
+            "summary": f"Error processing PDF: {str(e)}",
+            "success": False
+        }
+
+# Synchronous wrapper for non-async contexts
+def process_pdf_sync(
+    file_path: str,
+    instruction: str = "",
+    model_name: str = "gemini-2.5-flash-lite",
+    api_key: Optional[str] = None,
+    api_endpoint: Optional[str] = None
+) -> dict:
+    """Synchronous wrapper for process_pdf."""
+    return asyncio.run(process_pdf(file_path, instruction, model_name, api_key, api_endpoint))
+
+async def generate_pdf(
+    instruction: str,
+    output_filename: str = "generated_doc.pdf",
+    model_name: str = "gemini-2.5-flash-lite",
+    api_key: Optional[str] = None,
+    api_endpoint: Optional[str] = None
+) -> dict:
+    """
+    Generate a new PDF based on user instruction.
+    """
+    try:
+        from services import rag_service
+        output_dir = rag_service.UPLOAD_FOLDER
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+            
+        # 1. Formulate prompt
+        prompt = f"""
+You are a document generator.
+USER INSTRUCTION: "{instruction}"
+
+TASK:
+1. Generate the full content for the document requested by the user.
+2. Format it professionally.
+3. Return ONLY the text content of the document.
+4. Do NOT include markdown code blocks, just the text.
+"""
+        # 2. Call AI
+        messages = [{"role": "user", "content": prompt}]
+        content = await call_model(model_name, messages, api_key, api_endpoint)
+        
+        # 3. Write PDF
+        # Ensure filename is safe
+        import time
+        safe_name = f"gen_{int(time.time())}.pdf"
+        output_path = os.path.join(output_dir, safe_name)
+        
+        write_result = write_pdf(output_path, content)
+        
+        if "Error" in write_result:
+             return {"success": False, "summary": write_result}
+             
+        return {
+            "success": True, 
+            "output_file": safe_name,
+            "summary": f"Generated PDF saved to {safe_name}"
+        }
+        
+    except Exception as e:
+        return {"success": False, "summary": str(e)}

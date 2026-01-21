@@ -168,6 +168,14 @@ export interface AdminUser {
   createdAt: string;
   todayUsage: number;
   _count: { sessions: number; sentMessages: number };
+  // New status fields
+  isActive: boolean;
+  isSuspended: boolean;
+  suspendedAt: string | null;
+  suspendedReason: string | null;
+  customMessageLimit: number | null;
+  lastLoginAt: string | null;
+  loginCount: number;
 }
 
 export interface GrantableModel {
@@ -188,11 +196,40 @@ export const adminResetUsage = (userId: string) =>
 export const adminUpdateAllowedModels = (userId: string, models: string[]) =>
   api.post<{ message: string; user: AdminUser }>(`/admin/users/${userId}/allowed-models`, { models });
 
+export const adminSuspendUser = (userId: string, reason?: string) =>
+  api.post<{ message: string; user: AdminUser }>(`/admin/users/${userId}/suspend`, { reason });
+
+export const adminActivateUser = (userId: string) =>
+  api.post<{ message: string; user: AdminUser }>(`/admin/users/${userId}/activate`);
+
+export const adminDeleteUser = (userId: string, hard?: boolean) =>
+  api.delete<{ message: string; deleted: boolean; hard: boolean }>(`/admin/users/${userId}${hard ? '?hard=true' : ''}`);
+
+export const adminUpdateUserLimits = (userId: string, customMessageLimit: number | null) =>
+  api.put<{ message: string; user: AdminUser }>(`/admin/users/${userId}/limits`, { customMessageLimit });
+
 export const adminBroadcast = (subject: string, content: string, userIds?: string[]) =>
   api.post<{ message: string; sent: number; recipients?: string[] }>('/admin/broadcast', { subject, content, userIds });
 
 export const adminGetModels = () =>
   api.get<GrantableModel[]>('/admin/models');
+
+// System Settings
+export interface SystemSettings {
+  id: string;
+  openrouterApiKey: string | null;
+  defaultModel: string;
+  maxFreeMessagesPerDay: number;
+  systemStatus: 'active' | 'maintenance';
+  grantableModels: any[];
+}
+
+export const adminGetSettings = () =>
+  api.get<SystemSettings>('/admin/settings');
+
+export const adminUpdateSettings = (data: Partial<SystemSettings>) =>
+  api.put<SystemSettings>('/admin/settings', data);
+
 
 // Folders
 export interface Folder {
@@ -291,5 +328,15 @@ export const adminGetMetrics = (days?: number) =>
 
 export const submitContact = (data: { firstName: string; lastName: string; email: string; message: string }) =>
   api.post<{ success: boolean; message: string }>('/contact', data);
+
+// Update profile (e.g., save preferred model)
+export const updateProfile = (data: { lastSelectedModel?: string }) => {
+  return api.put('/auth/profile', data);
+};
+
+// Get available models
+export const getAvailableModels = () => {
+  return api.get('/auth/available-models');
+};
 
 export default api;

@@ -3,12 +3,13 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import nodemailer from 'nodemailer';
+import * as adminService from './admin.service';
 import crypto from 'crypto';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 
-// Email config (Gmail example - user should set these in .env)
+// Email config
 const EMAIL_USER = process.env.EMAIL_USER;
 const EMAIL_PASS = process.env.EMAIL_PASS;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
@@ -164,6 +165,8 @@ export const getUserProfile = async (userId: string) => {
       avatar: true,
       createdAt: true,
       isAdmin: true,
+      allowedModels: true,
+      lastSelectedModel: true,
     },
   });
 
@@ -215,7 +218,7 @@ export const forgotPassword = async (email: string) => {
     }
   }
 
-  // Dev mode: return URL directly
+
   return { message: 'Email not configured. Check console for reset URL.', resetUrl };
 };
 
@@ -306,4 +309,16 @@ export const broadcastEmail = async (adminId: string, subject: string, htmlConte
     sent,
     failed
   };
+};
+
+export const updateUserProfile = async (userId: string, data: { lastSelectedModel?: string }) => {
+  return await prisma.user.update({
+    where: { id: userId },
+    data
+  });
+};
+
+
+export const getAvailableModels = async () => {
+  return await adminService.getGrantableModels();
 };

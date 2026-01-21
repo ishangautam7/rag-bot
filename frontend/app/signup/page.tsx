@@ -52,7 +52,7 @@ export default function SignupPage() {
       if (data?.token) {
         localStorage.setItem('token', data.token);
         if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
-        router.push('/dashboard');
+        router.push('/chat');
       } else {
         setError('Signup failed');
       }
@@ -73,7 +73,7 @@ export default function SignupPage() {
       if (data?.token) {
         localStorage.setItem('token', data.token);
         if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
-        router.push('/dashboard');
+        router.push('/chat');
       } else {
         setError('Google sign-up failed.');
       }

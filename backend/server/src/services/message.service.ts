@@ -1,5 +1,5 @@
 import { prisma } from '../db';
-import { emitNewMessage } from './socket.service';
+import { emitNewMessage, emitError } from './socket.service';
 import { isFreeModel, canSendFreeMessage, incrementFreeMessageCount } from './usage.service';
 import { canAccessSession } from './session.service'; // Import shared helper
 
@@ -16,7 +16,23 @@ export const addMessage = async (
 
     if (!session) throw new Error('Session not found or access denied');
 
-    // Check free model limit
+    if (model) {
+        if (!apiKey) {
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { allowedModels: true, isAdmin: true }
+            });
+
+            if (!user) throw new Error('User not found');
+
+            const hasPermission = user.allowedModels.includes(model);
+
+            if (!hasPermission) {
+                throw new Error(`You do not have permission to use the model '${model}'. Please add your own API key in Settings or contact an admin.`);
+            }
+        }
+    }
+
     if (model && isFreeModel(model)) {
         const canSend = await canSendFreeMessage(userId);
         if (!canSend) {
@@ -36,11 +52,21 @@ export const addMessage = async (
         },
     });
 
+    // Update user's last selected model preference
+    if (model) {
+        await prisma.user.update({
+            where: { id: userId },
+            data: { lastSelectedModel: model }
+        }).catch(err => console.error('Failed to update last selected model:', err));
+    }
+
     // Call Python RAG server
     let aiResponseText = 'Sorry, I could not process your request.';
+    let isError = false;
+    let aiAttachments: any[] = []; // Store attachments from AI response
 
     try {
-        const ragPayload: Record<string, string> = {
+        const ragPayload: Record<string, any> = { // Changed to any to allow complex types if needed
             session_id: sessionId,
             message: content,
         };
@@ -58,31 +84,67 @@ export const addMessage = async (
         if (ragResponse.ok) {
             const ragData = await ragResponse.json();
             aiResponseText = ragData.response || 'No response from AI';
+            isError = ragData.is_error === true;
+
+            // Capture attachments
+            if (ragData.attachments && Array.isArray(ragData.attachments)) {
+                aiAttachments = ragData.attachments;
+            }
         } else {
             console.error('RAG server error:', ragResponse.status);
+            isError = true;
+            aiResponseText = 'Failed to connect to AI service. Please try again.';
         }
     } catch (error) {
         console.error('Failed to call RAG server:', error);
+        isError = true;
+        aiResponseText = 'Failed to connect to AI service. Please try again.';
     }
 
-    const botMessage = await prisma.message.create({
-        data: {
-            sessionId,
-            content: aiResponseText,
-            role: 'ASSISTANT',
-        },
-    });
+    // Only save to DB if NOT an error
+    let botMessage = null;
 
-    // Emit messages via WebSocket for real-time sync
-    emitNewMessage(sessionId, userMessage);
-    emitNewMessage(sessionId, botMessage);
+    if (!isError) {
+        // Here we would extract attachments if we parsed them from aiResponseText or ragData
+        // For now, we will simulate or prepare for it. 
+        // If aiResponseText is used as content, we assume it is the parsed text.
+
+        botMessage = await prisma.message.create({
+            data: {
+                sessionId,
+                content: aiResponseText,
+                role: 'ASSISTANT',
+                metadata: aiAttachments.length > 0 ? { attachments: aiAttachments } : undefined
+            },
+        });
+
+        // Emit bot message via WebSocket
+        emitNewMessage(sessionId, { ...botMessage, attachments: aiAttachments });
+    }
+
+    // Emit user message via WebSocket
+    const userMessageMapped = {
+        ...userMessage,
+        attachments: (userMessage.metadata as any)?.attachments || []
+    };
+    emitNewMessage(sessionId, userMessageMapped);
+
+    // If error, emit error separately
+    if (isError) {
+        emitError(sessionId, aiResponseText);
+    }
 
     await prisma.session.update({
         where: { id: sessionId },
         data: { updatedAt: new Date() },
     });
 
-    return { userMessage, botMessage };
+    return {
+        userMessage,
+        botMessage,
+        isError,
+        errorMessage: isError ? aiResponseText : undefined
+    };
 };
 
 export const getSessionMessages = async (sessionId: string, userId: string) => {
@@ -93,21 +155,18 @@ export const getSessionMessages = async (sessionId: string, userId: string) => {
     const messages = await prisma.message.findMany({
         where: { sessionId },
         orderBy: { createdAt: 'asc' },
-        include: {
-            sender: {
-                select: {
-                    id: true,
-                    username: true,
-                    avatar: true,
-                }
-            }
-        }
     });
 
-    return messages.map(msg => ({
+    const messagesMapped = messages.map(msg => ({
         ...msg,
         attachments: (msg.metadata as any)?.attachments || []
     }));
+
+    return {
+        messages: messagesMapped,
+        isGroupChat: session.isGroupChat,
+        isPublic: session.isPublic
+    };
 };
 
 export const getSessionDocuments = async (sessionId: string, userId: string) => {

@@ -300,7 +300,7 @@ function UsersTab() {
                                     </span>
                                 </td>
                                 <td className="px-4 py-3">
-                                    <span className="text-xs text-[var(--color-foreground-muted)]">{u.allowedModels?.length || 1} models</span>
+                                    <span className="text-xs text-[var(--color-foreground-muted)]">{u.allowedModels ? u.allowedModels.length : 0} models</span>
                                 </td>
                                 <td className="px-4 py-3">
                                     <div className="flex gap-2">
@@ -688,24 +688,77 @@ function MetricsTab() {
 }
 
 // ==================== HELPER COMPONENTS ====================
+// ==================== HELPER COMPONENTS ====================
 function UserDetailModal({ user, onClose, onUpdate }: { user: AdminUser; onClose: () => void; onUpdate: (user: AdminUser) => void }) {
     const [models, setModels] = useState<GrantableModel[]>([]);
-    const [selectedModels, setSelectedModels] = useState<string[]>(user.allowedModels || ['openrouter/auto']);
+    const [selectedModels, setSelectedModels] = useState<string[]>(user.allowedModels || []);
+    const [customLimit, setCustomLimit] = useState(user.customMessageLimit?.toString() || '');
     const [saving, setSaving] = useState(false);
+    const [activeTab, setActiveTab] = useState<'models' | 'settings' | 'danger'>('models');
+
+    // API imports dynamically to avoid server-side issues if any
+    const { adminUpdateAllowedModels, adminSuspendUser, adminActivateUser, adminDeleteUser, adminUpdateUserLimits } = require('@/app/lib/api');
 
     useEffect(() => {
-        adminGetModels().then(res => setModels(res.data)).catch(console.error);
+        adminGetModels().then((res: any) => setModels(res.data)).catch(console.error);
     }, []);
 
-    const handleSave = async () => {
+    const handleSaveModels = async () => {
         setSaving(true);
         try {
             const res = await adminUpdateAllowedModels(user.id, selectedModels);
             onUpdate(res.data.user);
+            alert('Models updated successfully');
         } catch (e) {
             console.error('Failed to update models:', e);
             alert('Failed to update models');
         } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleUpdateLimit = async () => {
+        setSaving(true);
+        try {
+            const limit = customLimit ? parseInt(customLimit) : null;
+            const res = await adminUpdateUserLimits(user.id, limit);
+            onUpdate(res.data.user);
+            alert('Limit updated successfully');
+        } catch (e) {
+            console.error('Failed to update limit:', e);
+            alert('Failed to update limit');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSuspendToggle = async () => {
+        if (!confirm(user.isSuspended ? 'Activate this user?' : 'Suspend this user?')) return;
+        setSaving(true);
+        try {
+            const res = user.isSuspended
+                ? await adminActivateUser(user.id)
+                : await adminSuspendUser(user.id, 'Admin action');
+            onUpdate(res.data.user);
+        } catch (e) {
+            console.error('Failed to toggle suspension:', e);
+            alert('Action failed');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
+        setSaving(true);
+        try {
+            await adminDeleteUser(user.id);
+            onClose();
+            // Need to refresh parent list - simplest way is reload or callback
+            window.location.reload();
+        } catch (e) {
+            console.error('Failed to delete user:', e);
+            alert('Failed to delete user');
             setSaving(false);
         }
     };
@@ -720,38 +773,137 @@ function UserDetailModal({ user, onClose, onUpdate }: { user: AdminUser; onClose
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
-            <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl p-6 max-w-md w-full m-4" onClick={(e) => e.stopPropagation()}>
-                <h3 className="text-lg font-semibold text-[var(--color-foreground)] mb-4">Edit User</h3>
-
-                <div className="mb-4">
-                    <p className="text-sm text-[var(--color-foreground-muted)]">Email</p>
-                    <p className="text-[var(--color-foreground)]">{user.email}</p>
-                </div>
-
-                <div className="mb-4">
-                    <p className="text-sm text-[var(--color-foreground-muted)] mb-2">Allowed Models</p>
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {models.map((model) => (
-                            <label key={model.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-secondary)] cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={selectedModels.includes(model.id)}
-                                    onChange={() => toggleModel(model.id)}
-                                    className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
-                                />
-                                <span className="text-sm text-[var(--color-foreground)]">{model.name}</span>
-                            </label>
-                        ))}
+            <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl w-full max-w-lg m-4 overflow-hidden flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+                {/* Header */}
+                <div className="p-6 border-b border-[var(--color-border)] flex justify-between items-start">
+                    <div>
+                        <h3 className="text-lg font-semibold text-[var(--color-foreground)]">Edit User</h3>
+                        <p className="text-sm text-[var(--color-foreground-muted)]">{user.email}</p>
                     </div>
+                    <button onClick={onClose} className="text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)]">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
                 </div>
 
-                <div className="flex gap-3">
-                    <button onClick={onClose} className="flex-1 py-2 border border-[var(--color-border)] rounded-lg text-[var(--color-foreground-muted)] hover:bg-[var(--color-secondary)]">
-                        Cancel
+                {/* Tabs */}
+                <div className="flex border-b border-[var(--color-border)]">
+                    <button
+                        onClick={() => setActiveTab('models')}
+                        className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'models' ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-transparent text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)]'}`}
+                    >
+                        Models
                     </button>
-                    <button onClick={handleSave} disabled={saving} className="flex-1 py-2 bg-[var(--color-primary)] rounded-lg text-white hover:bg-[var(--color-primary-dark)] disabled:opacity-50">
-                        {saving ? 'Saving...' : 'Save'}
+                    <button
+                        onClick={() => setActiveTab('settings')}
+                        className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'settings' ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-transparent text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)]'}`}
+                    >
+                        Limits & Status
                     </button>
+                    <button
+                        onClick={() => setActiveTab('danger')}
+                        className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'danger' ? 'border-red-500 text-red-500' : 'border-transparent text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)]'}`}
+                    >
+                        Deletion
+                    </button>
+                </div>
+
+                {/* Content */}
+                <div className="p-6 overflow-y-auto">
+                    {activeTab === 'models' && (
+                        <div className="space-y-4">
+                            <p className="text-sm text-[var(--color-foreground-muted)]">Select models this user can access:</p>
+                            <div className="space-y-2 max-h-60 overflow-y-auto border border-[var(--color-border)] rounded-lg p-2">
+                                {models.map((model) => (
+                                    <label key={model.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-secondary)] cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedModels.includes(model.id)}
+                                            onChange={() => toggleModel(model.id)}
+                                            className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                                        />
+                                        <div>
+                                            <p className="text-sm text-[var(--color-foreground)]">{model.name}</p>
+                                            <p className="text-xs text-[var(--color-foreground-muted)]">{model.id}</p>
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
+                            <button
+                                onClick={handleSaveModels}
+                                disabled={saving}
+                                className="w-full py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-dark)] disabled:opacity-50"
+                            >
+                                {saving ? 'Saving...' : 'Update Models'}
+                            </button>
+                        </div>
+                    )}
+
+                    {activeTab === 'settings' && (
+                        <div className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-medium text-[var(--color-foreground)] mb-2">Custom Daily Message Limit</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="number"
+                                        value={customLimit}
+                                        onChange={(e) => setCustomLimit(e.target.value)}
+                                        placeholder="Default (15)"
+                                        className="flex-1 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-[var(--color-foreground)]"
+                                    />
+                                    <button
+                                        onClick={handleUpdateLimit}
+                                        disabled={saving}
+                                        className="px-4 py-2 bg-[var(--color-secondary)] text-[var(--color-foreground)] rounded-lg hover:bg-[var(--color-border)] border border-[var(--color-border)]"
+                                    >
+                                        Save
+                                    </button>
+                                </div>
+                                <p className="text-xs text-[var(--color-foreground-muted)] mt-1">Leave empty to use system default (15).</p>
+                            </div>
+
+                            <div className="pt-4 border-t border-[var(--color-border)]">
+                                <label className="block text-sm font-medium text-[var(--color-foreground)] mb-2">Account Status</label>
+                                <div className="flex items-center justify-between p-3 bg-[var(--color-secondary)] rounded-lg border border-[var(--color-border)]">
+                                    <div>
+                                        <p className="text-sm font-medium text-[var(--color-foreground)]">
+                                            {user.isSuspended ? 'Suspended' : 'Active'}
+                                        </p>
+                                        <p className="text-xs text-[var(--color-foreground-muted)]">
+                                            {user.isSuspended ? 'User cannot log in or use chat.' : 'User has full access.'}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={handleSuspendToggle}
+                                        disabled={saving}
+                                        className={`px-3 py-1.5 text-xs font-medium rounded-lg border ${user.isSuspended
+                                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/20'
+                                            : 'bg-orange-500/10 border-orange-500/30 text-orange-600 hover:bg-orange-500/20'
+                                            }`}
+                                    >
+                                        {user.isSuspended ? 'Activate Account' : 'Suspend Account'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'danger' && (
+                        <div className="space-y-4">
+                            <div className="p-4 bg-red-500/5 border border-red-500/20 rounded-xl">
+                                <h4 className="text-sm font-medium text-red-600 mb-2">Delete User Account</h4>
+                                <p className="text-xs text-red-600/70 mb-4">
+                                    Permanently delete this user and all their data (chats, messages, logs). This action cannot be undone.
+                                </p>
+                                <button
+                                    onClick={handleDelete}
+                                    disabled={saving}
+                                    className="w-full py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
+                                >
+                                    {saving ? 'Processing...' : 'Delete User Permanently'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { getProfile, updateProfile, getAvailableModels } from '@/app/lib/api';
 
 interface Model {
     id: string;
@@ -17,14 +18,6 @@ interface CustomModel {
     apiKey: string;
 }
 
-const AVAILABLE_MODELS: Model[] = [
-    // Free model (no API key needed)
-    { id: 'openrouter/auto', name: 'Auto (Free)', provider: 'openrouter', requiresApiKey: false, isFree: true },
-    // Paid models (require API key)
-    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', provider: 'google', requiresApiKey: true },
-    { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai', requiresApiKey: true },
-];
-
 interface ModelSelectorProps {
     selectedModel: string;
     onModelChange: (model: string) => void;
@@ -33,6 +26,24 @@ interface ModelSelectorProps {
 
 export default function ModelSelector({ selectedModel, onModelChange, compact = true }: ModelSelectorProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const [serverModels, setServerModels] = useState<Model[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // User Permissions
+    const [userAllowedModels, setUserAllowedModels] = useState<string[]>(() => {
+        if (typeof window === 'undefined') return [];
+        try {
+            const profile = localStorage.getItem('userProfile');
+            if (profile) {
+                const parsed = JSON.parse(profile);
+                return parsed.allowedModels || [];
+            }
+            return [];
+        } catch {
+            return [];
+        }
+    });
+
     const [apiKeys, setApiKeys] = useState<Record<string, string>>(() => {
         if (typeof window === 'undefined') return {};
         try {
@@ -42,6 +53,7 @@ export default function ModelSelector({ selectedModel, onModelChange, compact = 
             return {};
         }
     });
+
     const [customModels, setCustomModels] = useState<CustomModel[]>(() => {
         if (typeof window === 'undefined') return [];
         try {
@@ -51,25 +63,70 @@ export default function ModelSelector({ selectedModel, onModelChange, compact = 
             return [];
         }
     });
+
     const dropdownRef = useRef<HTMLDivElement>(null);
 
+    // Initial Data Fetch
     useEffect(() => {
+        const loadData = async () => {
+            setIsLoading(true);
+            try {
+                // 1. Fetch Available Models from Server
+                const modelsRes = await getAvailableModels();
+                setServerModels(modelsRes.data);
+
+                // 2. Fetch User Profile for Permissions & Preferences
+                const profileRes = await getProfile();
+                const userData = profileRes.data as any;
+
+                if (userData.allowedModels) {
+                    setUserAllowedModels(userData.allowedModels);
+                    // Update localStorage to keep it fresh
+                    const savedProfile = localStorage.getItem('userProfile');
+                    const currentProfile = savedProfile ? JSON.parse(savedProfile) : {};
+                    localStorage.setItem('userProfile', JSON.stringify({ ...currentProfile, allowedModels: userData.allowedModels }));
+                }
+
+                // 3. Sync Last Selected Model (if valid)
+                if (userData.lastSelectedModel && userData.lastSelectedModel !== selectedModel) {
+                    onModelChange(userData.lastSelectedModel);
+                }
+            } catch (error) {
+                console.error("Failed to load models or profile", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
 
-    // Combine built-in and custom models
+        document.addEventListener('mousedown', handleClickOutside);
+        loadData();
+
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []); // Run once on mount
+
+    // Handle Model Selection
+    const handleSelect = async (modelId: string) => {
+        onModelChange(modelId);
+        setIsOpen(false);
+        try {
+            await updateProfile({ lastSelectedModel: modelId });
+        } catch (err) {
+            console.error("Failed to persist model selection", err);
+        }
+    };
+
+    // Combine built-in (server) and custom models
     const allModels: Model[] = [
-        ...AVAILABLE_MODELS,
+        ...serverModels,
         ...customModels.map(cm => ({ id: cm.id, name: cm.name, provider: 'custom' as const, requiresApiKey: true }))
     ];
 
-    const currentModel = allModels.find(m => m.id === selectedModel) || AVAILABLE_MODELS[0];
 
     const hasApiKey = (model: Model) => {
         if (model.isFree) return true; // Free models don't need API key
@@ -81,6 +138,19 @@ export default function ModelSelector({ selectedModel, onModelChange, compact = 
         }
         return false;
     };
+
+    const availableModels = allModels.filter(model => {
+        if (model.isFree) {
+            return userAllowedModels.includes(model.id);
+        }
+
+        const userHasApiKey = hasApiKey(model);
+        const adminGrantedPermission = userAllowedModels.includes(model.id);
+
+        return userHasApiKey || adminGrantedPermission;
+    });
+
+    const currentModel = selectedModel ? availableModels.find(m => m.id === selectedModel) : null;
 
     const getProviderColor = (provider: string, isFree?: boolean) => {
         if (isFree) return 'bg-emerald-400';
@@ -108,10 +178,10 @@ export default function ModelSelector({ selectedModel, onModelChange, compact = 
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center gap-2 ${compact ? 'px-2 py-1.5 text-xs' : 'px-3 py-2 text-sm'} bg-[var(--color-card)] hover:bg-[var(--color-secondary)] border border-[var(--color-border)] rounded-lg text-[var(--color-foreground)] transition-colors`}
+                className={`flex items-center gap-2 ${compact ? 'px-2 py-1.5 text-xs' : 'px-3 py-2 text-sm'} bg-[var(--color-card)] hover:bg-[var(--color-secondary)] border ${!currentModel ? 'border-amber-500/50' : 'border-[var(--color-border)]'} rounded-lg text-[var(--color-foreground)] transition-colors`}
             >
-                <span className={`w-2 h-2 rounded-full ${getProviderColor(currentModel.provider, currentModel.isFree)}`}></span>
-                <span className="truncate max-w-[120px]">{currentModel.name}</span>
+                <span className={`w-2 h-2 rounded-full ${currentModel ? getProviderColor(currentModel.provider, currentModel.isFree) : 'bg-amber-400 animate-pulse'}`}></span>
+                <span className="truncate max-w-[120px]">{currentModel ? currentModel.name : 'Select Model'}</span>
                 <svg className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
@@ -123,18 +193,22 @@ export default function ModelSelector({ selectedModel, onModelChange, compact = 
                         <p className="text-xs text-[var(--color-foreground-muted)] font-medium">Select Model</p>
                     </div>
 
+                    {/* Loading State */}
+                    {isLoading && serverModels.length === 0 && (
+                        <div className="p-4 text-center text-xs text-[var(--color-foreground-muted)]">
+                            Loading models...
+                        </div>
+                    )}
+
                     {/* Free Models Section */}
                     <div className="p-2 border-b border-[var(--color-border)]">
                         <p className="text-xs text-[var(--color-primary)] font-medium mb-2">Free</p>
-                        {allModels.filter(m => m.isFree).map((model) => {
+                        {availableModels.filter(m => m.isFree).map((model) => {
                             const isSelected = selectedModel === model.id;
                             return (
                                 <button
                                     key={model.id}
-                                    onClick={() => {
-                                        onModelChange(model.id);
-                                        setIsOpen(false);
-                                    }}
+                                    onClick={() => handleSelect(model.id)}
                                     className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--color-secondary)] rounded-lg transition-colors ${isSelected ? 'border border-[var(--color-primary)] bg-[var(--color-secondary)]' : ''}`}
                                 >
                                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${getProviderColor(model.provider, model.isFree)}`}></span>
@@ -142,43 +216,42 @@ export default function ModelSelector({ selectedModel, onModelChange, compact = 
                                         <p className={`text-sm truncate ${isSelected ? 'text-[var(--color-primary)] font-semibold' : 'text-[var(--color-foreground)]'}`}>
                                             {model.name}
                                         </p>
-                                        {/* <p className="text-xs text-emerald-500">No API key needed</p> */}
                                     </div>
                                 </button>
                             );
                         })}
                     </div>
 
-                    {/* Paid Models Section */}
-                    <div className="max-h-48 overflow-y-auto p-2">
-                        <p className="text-xs text-[var(--color-foreground-muted)] font-medium mb-2">Requires API Key</p>
-                        {allModels.filter(m => !m.isFree).map((model) => {
-                            const isSelected = selectedModel === model.id;
-                            return (
-                                <button
-                                    key={model.id}
-                                    onClick={() => {
-                                        onModelChange(model.id);
-                                        setIsOpen(false);
-                                    }}
-                                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--color-secondary)] rounded-lg transition-colors ${isSelected ? 'border border-[var(--color-primary)] bg-[var(--color-secondary)]' : ''}`}
-                                >
-                                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${getProviderColor(model.provider)}`}></span>
-                                    <div className="flex-1 min-w-0">
-                                        <p className={`text-sm truncate ${isSelected ? 'text-[var(--color-primary)] font-semibold' : 'text-[var(--color-foreground)]'}`}>
-                                            {model.name}
-                                        </p>
-                                        <p className="text-xs text-[var(--color-foreground-muted)]">{getProviderLabel(model.provider)}</p>
-                                    </div>
-                                    {hasApiKey(model) ? (
-                                        <span className="text-xs px-1.5 py-0.5 bg-green-500/20 text-green-600 rounded">Key Set</span>
-                                    ) : (
-                                        <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-700 rounded">Need Key</span>
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </div>
+
+                    {/* Paid Models Section - Only show if there are paid models */}
+                    {availableModels.filter(m => !m.isFree).length > 0 && (
+                        <div className="max-h-48 overflow-y-auto p-2">
+                            <p className="text-xs text-[var(--color-foreground-muted)] font-medium mb-2">Requires API Key</p>
+                            {availableModels.filter(m => !m.isFree).map((model) => {
+                                const isSelected = selectedModel === model.id;
+                                return (
+                                    <button
+                                        key={model.id}
+                                        onClick={() => handleSelect(model.id)}
+                                        className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--color-secondary)] rounded-lg transition-colors ${isSelected ? 'border border-[var(--color-primary)] bg-[var(--color-secondary)]' : ''}`}
+                                    >
+                                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${getProviderColor(model.provider)}`}></span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className={`text-sm truncate ${isSelected ? 'text-[var(--color-primary)] font-semibold' : 'text-[var(--color-foreground)]'}`}>
+                                                {model.name}
+                                            </p>
+                                            <p className="text-xs text-[var(--color-foreground-muted)]">{getProviderLabel(model.provider)}</p>
+                                        </div>
+                                        {hasApiKey(model) ? (
+                                            <span className="text-xs px-1.5 py-0.5 bg-green-500/20 text-green-600 rounded">Key Set</span>
+                                        ) : (
+                                            <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-700 rounded">Need Key</span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
 
                     <div className="p-2 border-t border-[var(--color-border)]">
                         <a

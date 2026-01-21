@@ -15,6 +15,8 @@ router.post('/logout', authController.logout);
 
 // Protected routes
 router.get('/me', protect, authController.getProfile);
+router.put('/profile', protect, authController.updateProfile);
+router.get('/available-models', protect, authController.getAvailableModels);
 
 // Admin routes
 router.post('/admin/broadcast', protect, authController.broadcastEmail);

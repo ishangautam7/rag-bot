@@ -20,7 +20,7 @@ export default function Home() {
         try {
           const { getProfile } = await import('@/app/lib/api');
           await getProfile();
-          router.push('/dashboard');
+          router.push('/chat');
         } catch (error) {
           console.error("Token verification failed", error);
           localStorage.removeItem('token');
@@ -36,10 +36,10 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--color-background)] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-          <p className="text-xs font-bold tracking-widest text-[#666] uppercase animate-pulse">Verifying Identity...</p>
+          <div className="w-8 h-8 border-2 border-[var(--color-border)] border-t-[var(--color-primary)] rounded-full animate-spin"></div>
+          <p className="text-xs font-bold tracking-widest text-[var(--color-foreground-muted)] uppercase animate-pulse">Verifying Identity...</p>
         </div>
       </div>
     );
@@ -102,7 +102,7 @@ export default function Home() {
             transition={{ duration: 0.8, delay: 0.3 }}
             className="flex flex-wrap justify-center gap-4"
           >
-            <Link href="/dashboard" className="group relative px-8 py-4 bg-white text-black font-semibold rounded-full overflow-hidden">
+            <Link href="/chat" className="group relative px-8 py-4 bg-white text-black font-semibold rounded-full overflow-hidden">
               <span className="relative z-10 flex items-center gap-2">
                 Get Started <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
               </span>
