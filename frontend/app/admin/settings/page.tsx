@@ -38,7 +38,7 @@ export default function AdminSettingsPage() {
                 return;
             }
 
-            const res = await axios.get('http://localhost:4000/api/admin/settings', {
+            const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/admin/settings`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -64,7 +64,7 @@ export default function AdminSettingsPage() {
 
         try {
             const token = localStorage.getItem('token');
-            await axios.put('http://localhost:4000/api/admin/settings', {
+            await axios.put(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/admin/settings`, {
                 openrouterApiKey: openrouterApiKey || null,
                 defaultModel,
                 maxFreeMessagesPerDay: Number(maxFreeMessagesPerDay),

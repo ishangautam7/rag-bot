@@ -111,7 +111,7 @@ export default function ChatPage() {
                 uploadedFiles.push({
                   name: file.name,
                   type: file.type,
-                  url: `http://localhost:4000/api/chat/files/${uploadRes.data.file.filename}`
+                  url: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/chat/files/${uploadRes.data.file.filename}`
                 });
               }
             } catch (err) {

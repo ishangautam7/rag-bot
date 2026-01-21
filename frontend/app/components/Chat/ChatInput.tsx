@@ -83,7 +83,7 @@ export default function ChatInput({ onSendMessage, disabled = false, sessionId, 
             setUploadedFiles(prev => [...prev, {
               name: file.name,
               type: file.type,
-              url: `http://localhost:4000/api/chat/files/${res.data.file.filename}`
+              url: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/chat/files/${res.data.file.filename}`
             }]);
           }
           if (onUploadComplete) onUploadComplete(file.name);

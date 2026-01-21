@@ -2,8 +2,7 @@ import axios from 'axios';
 import type { AuthResponse, CreateSessionResponse, SendMessageResponse, Session, Message, UploadResponse } from './types';
 
 const api = axios.create({
-  // baseURL: 'https://api.ishangautam7.com.np/api',
-  baseURL: 'http://localhost:4000/api',
+  baseURL: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api`,
 });
 
 api.interceptors.request.use((config) => {
@@ -26,7 +25,7 @@ api.interceptors.response.use(
         const refreshToken = localStorage.getItem('refreshToken');
         if (!refreshToken) throw new Error('No refresh token');
 
-        const { data } = await axios.post('http://localhost:4000/api/auth/refresh', { refreshToken });
+        const { data } = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/auth/refresh`, { refreshToken });
 
         localStorage.setItem('token', data.token);
         localStorage.setItem('refreshToken', data.refreshToken);
